@@ -71,8 +71,9 @@ SIMPLE_JWT = {
 }
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # <--- Siempre la primera
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # <--- Añadir aquí para archivos estáticos
+    "corsheaders.middleware.CorsMiddleware",  # <--- Siempre antes de CommonMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -106,7 +107,9 @@ WSGI_APPLICATION = "heft_core.wsgi.application"
 
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL"), conn_max_age=600, ssl_require=True
+        default=os.getenv("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=os.getenv("DATABASE_SSL", "False") == "True"
     )
 }
 
@@ -143,8 +146,12 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
+# https://docs.djangoproject.com/en/6.0/how-to/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Almacenamiento comprimido y con caché (opcional pero recomendado)
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 CORS_ALLOW_ALL_ORIGINS = True
