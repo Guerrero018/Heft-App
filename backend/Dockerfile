@@ -25,6 +25,8 @@ COPY . .
 # Exponer el puerto que usará Django
 EXPOSE 8000
 
-# Comando por defecto para correr el servidor (usaremos gunicorn para producción pero esto es personalizable)
-# Para desarrollo lo podemos sobreescribir con docker-compose
-CMD ["gunicorn", "heft_core.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Dar permisos de ejecución al script
+RUN chmod +x start.sh
+
+# Ejecutar el script de inicio para migraciones y levantar el servidor
+CMD ["./start.sh"]
