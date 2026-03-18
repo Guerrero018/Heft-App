@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=heft_db
+      - POSTGRES_USER=heft_user
+      - POSTGRES_PASSWORD=heft_pass
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U heft_user -d heft_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgres://heft_user:heft_pass@db:5432/heft_db
+      - DATABASE_SSL=False
+      - SECRET_KEY=desarrollo_inseguro_cambiar_en_produccion
+      - ALLOWED_HOSTS=*
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
