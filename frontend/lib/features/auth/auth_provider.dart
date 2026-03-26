@@ -149,32 +149,47 @@ class AuthNotifier extends Notifier<AuthState> {
     );
 
     try {
-      // Forzamos el deslogueo previo para que siempre nos pregunte qué cuenta usar
-      await googleSignIn.signOut();
+      print('🚀 Iniciando loginWithGoogle...');
+      state = state.copyWith(isLoading: true, error: null);
       
-      final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
+      try {
+        print('⏳ Intentando signOut previo...');
+        await googleSignIn.signOut();
+      } catch (e) {
+        print('ℹ️ Error al cerrar sesión previa (puede ignorarse): $e');
+      }
+
+      print('🔑 Abriendo selector de cuentas de Google...');
+      final gsi.GoogleSignInAccount? account = await googleSignIn.signIn();
+      
+      if (account == null) {
+        print('❌ Usuario canceló la selección de cuenta');
         state = state.copyWith(isLoading: false);
         return;
       }
-
-      final googleAuth = await googleUser.authentication;
-      final idToken = googleAuth.idToken;
+      
+      print('✅ Cuenta seleccionada: ${account.email}');
+      final authentication = await account.authentication;
+      final idToken = authentication.idToken;
+      print('🎫 Token de Google obtenido: ${idToken != null ? 'SÍ' : 'NO'}');
 
       if (idToken == null) {
-        state = state.copyWith(isLoading: false, error: 'Google auth failed');
+        state = state.copyWith(isLoading: false, error: 'No se pudo obtener el token de Google');
         return;
       }
-
+      
+      print('📡 Enviando token al servidor: ${AppConstants.baseUrl}auth/social/google/');
       final response = await apiClient.post(
-        'auth/social/google/', // Endpoint de dj-rest-auth para social login
+        'auth/social/google/', 
         data: {
-          'access_token': idToken, // dj-rest-auth usa el id_token como access_token
+          'access_token': idToken, 
           'code': '',
         },
-      );
+      ).timeout(const Duration(seconds: 15));
 
-      if (response.statusCode == 200) {
+      print('📥 Respuesta del servidor recibida. Status: ${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final access = response.data['access'];
         final refresh = response.data['refresh'];
 
@@ -183,6 +198,8 @@ class AuthNotifier extends Notifier<AuthState> {
 
         final user = response.data['user'];
         final isOnboarded = user != null ? user['is_onboarded'] == true : false;
+        
+        print('🎊 Login exitoso! Onboarded: $isOnboarded');
 
         state = state.copyWith(
           isLoading: false,
@@ -191,10 +208,20 @@ class AuthNotifier extends Notifier<AuthState> {
         );
       }
     } on DioException catch (e) {
-      final message = e.response?.data['detail'] ?? 'Error con Google backend';
+      print('🔥 Error en la petición API: ${e.response?.statusCode}');
+      
+      String message = 'Error con el servidor de Google';
+      if (e.response?.data != null && e.response?.data is Map) {
+        message = e.response?.data['detail'] ?? message;
+      } else if (e.response?.data != null && e.response?.data is String) {
+        // El servidor devolvió una página HTML de error (probablemente error 500)
+        message = 'Error del servidor (HTML): ${e.response?.statusCode}';
+      }
+
       state = state.copyWith(isLoading: false, error: message);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Error final: $e');
+      print('💥 Error inesperado: $e');
+      state = state.copyWith(isLoading: false, error: 'Error inesperado: $e');
     }
   }
 
