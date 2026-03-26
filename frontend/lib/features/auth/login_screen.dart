@@ -48,52 +48,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 60),
-              // Logo Area
+              // Logo Area (Mimicking the image logo style)
               Center(
                 child: Container(
-                  height: 120,
-                  width: 120,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF1E1E1E),
+                  height: 100,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.2),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
                   ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.fitness_center,
-                          size: 60,
-                          color: AppTheme.primaryColor,
-                        );
-                      },
+                  child: const Center(
+                    child: Text(
+                      'H',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 60,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 48),
 
-              // Welcome Text
-              const Text(
-                'WELCOME BACK',
+              // Headlines (Mimicking the image text)
+              RichText(
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.textColor,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
+                text: const TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Eleva tu nivel.\n',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'Rastrea tu fuerza.',
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Ready to crush your goals?',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.hintColor, fontSize: 16),
               ),
               const SizedBox(height: 48),
 
-              // Email Input
+              // Manual Login Inputs
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -107,8 +118,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Password Input
               TextField(
                 controller: _passwordController,
                 obscureText: !_isPasswordVisible,
@@ -134,8 +143,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
 
-              // Forgot Password
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -174,6 +183,79 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 24),
 
+              // OR placeholder
+              Row(
+                children: const [
+                  Expanded(child: Divider(color: Color(0xFF2A2A2A))),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(
+                      'O CONTINUA CON',
+                      style: TextStyle(
+                        color: AppTheme.hintColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Color(0xFF2A2A2A))),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Google Button (Matching image style)
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: OutlinedButton(
+                  onPressed: () => ref.read(authProvider.notifier).loginWithGoogle(),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.g_mobiledata_rounded,
+                          color: Colors.black,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Continuar con Google',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
               // Register Area
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -197,6 +279,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
             ],
           ),
         ),

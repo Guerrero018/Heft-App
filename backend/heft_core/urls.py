@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from apps.users.views import RegisterView
+from apps.users.views import RegisterView, GoogleLogin
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -28,6 +28,10 @@ urlpatterns = [
     path('api/auth/register/', RegisterView.as_view(), name='auth_register'),
     path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # Social Auth
+    path('api/auth/google/', include('allauth.socialaccount.providers.google.urls')),
+    path('api/auth/social/', include('dj_rest_auth.registration.urls')),
+    path('api/auth/social/google/', GoogleLogin.as_view(), name='google_login'),
     # API endpoints
     path('api/', include([
         path('', include('apps.exercises.urls')),

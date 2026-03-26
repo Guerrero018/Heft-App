@@ -50,5 +50,13 @@ class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(foregroundColor: primaryColor),
     ),
+    cardColor: const Color(0xFF1E1E1E),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: surfaceColor,
+      selectedItemColor: primaryColor,
+      unselectedItemColor: hintColor,
+      type: BottomNavigationBarType.fixed,
+      elevation: 0,
+    ),
   );
 }

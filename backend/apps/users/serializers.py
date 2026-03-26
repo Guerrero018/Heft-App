@@ -7,7 +7,7 @@ User = get_user_model()
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'height', 'units_preference', 'birth_date')
+        fields = ('id', 'username', 'email', 'height', 'units_preference', 'birth_date', 'is_onboarded')
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -22,6 +22,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return {
             'refresh': str(refresh),
             'access': str(refresh.access_token),
+            'user': CustomUserSerializer(user).data
         }
 
     def create(self, validated_data):

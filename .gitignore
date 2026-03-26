@@ -34,3 +34,4 @@ backend/.env
 .gemini/
 .agents/
 /tmp/
+credentials.txt

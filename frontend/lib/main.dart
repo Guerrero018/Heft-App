@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/auth_provider.dart';
 import 'features/home/home_screen.dart';
+import 'features/onboarding/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,8 +25,10 @@ class HeftApp extends ConsumerWidget {
       home: authState.isLoading
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : authState.isAuthenticated
-          ? const HomeScreen()
-          : const LoginScreen(),
+              ? (authState.isOnboarded
+                  ? const HomeScreen()
+                  : const OnboardingScreen())
+              : const LoginScreen(),
     );
   }
 }

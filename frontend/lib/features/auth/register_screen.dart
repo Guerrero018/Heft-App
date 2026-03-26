@@ -72,21 +72,51 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'CREATE ACCOUNT',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.textColor,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
+              // Logo Area (Mimicking the image logo style)
+              Center(
+                child: Container(
+                  height: 80,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'H',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 48,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Join the Heft community today',
+              const SizedBox(height: 32),
+
+              RichText(
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.hintColor, fontSize: 16),
+                text: const TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Tus metas te esperan.\n',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'Empieza ahora.',
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 48),
 
@@ -155,7 +185,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 decoration: const InputDecoration(
                   hintText: 'Confirm Password',
                   prefixIcon: Icon(
-                    Icons.lock_clock_outlined,
+                    Icons.lock_outline, // Changed from lock_clock_outlined
                     color: AppTheme.hintColor,
                   ),
                 ),
@@ -189,6 +219,84 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       )
                     : const Text('CREATE ACCOUNT'),
               ),
+              const SizedBox(height: 24),
+
+              // OR placeholder
+              Row(
+                children: const [
+                  Expanded(child: Divider(color: Color(0xFF2A2A2A))),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(
+                      'O CONTINUA CON',
+                      style: TextStyle(
+                        color: AppTheme.hintColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Color(0xFF2A2A2A))),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Google Button (Matching image style)
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: OutlinedButton(
+                  onPressed: () async {
+                    await ref.read(authProvider.notifier).loginWithGoogle();
+                    if (mounted && ref.read(authProvider).isAuthenticated) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.g_mobiledata_rounded,
+                          color: Colors.black,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Registrarse con Google',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),

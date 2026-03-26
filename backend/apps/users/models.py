@@ -9,6 +9,15 @@ class User(AbstractUser):
         default='kg'
     )
     birth_date = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=20, null=True, blank=True)
+    experience_level = models.CharField(max_length=50, null=True, blank=True)
+    fitness_goal = models.CharField(max_length=100, null=True, blank=True)
+    equipment = models.JSONField(default=list, blank=True) # Full gym, dumbbells, etc.
+    workout_days_per_week = models.IntegerField(default=3)
+    workout_duration_minutes = models.IntegerField(default=60)
+    muscle_focus = models.JSONField(default=list, blank=True)
+    
+    is_onboarded = models.BooleanField(default=False)
 
     def __str__(self):
         return self.username
