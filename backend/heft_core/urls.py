@@ -31,7 +31,7 @@ urlpatterns = [
     # Social Auth
     path('api/auth/google/', include('allauth.socialaccount.providers.google.urls')),
     path('api/auth/social/', include('dj_rest_auth.registration.urls')),
-    path('api/auth/social/google/', GoogleLogin.as_view(), name='google_login'),
+    path('api/auth/social/google/', GoogleDirectLogin.as_view(), name='google_login'),
     # API endpoints
     path('api/', include([
         path('', include('apps.exercises.urls')),
