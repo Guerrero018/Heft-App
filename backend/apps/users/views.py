@@ -15,5 +15,5 @@ class RegisterView(generics.CreateAPIView):
 
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
-    callback_url = "http://localhost:8000/accounts/google/login/callback/" # Esto es estándar
+    callback_url = "https://heft-backend-ywi0.onrender.com/accounts/google/login/callback/" 
     client_class = OAuth2Client
