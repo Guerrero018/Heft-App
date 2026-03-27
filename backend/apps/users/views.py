@@ -29,7 +29,7 @@ class GoogleDirectLogin(APIView):
     def post(self, request):
         token = request.data.get('access_token') or request.data.get('id_token')
         if not token:
-            return Response({'error': 'No se proporcionó el token'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'No se proporcionó el token'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             # Reutilizar el Web Client ID de settings
@@ -58,9 +58,9 @@ class GoogleDirectLogin(APIView):
             })
 
         except ValueError as e:
-            return Response({'error': f'Token inválido: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': f'Token inválido: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({'error': f'Error del servidor: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'detail': f'Error del servidor: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
