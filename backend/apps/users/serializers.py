@@ -5,6 +5,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 User = get_user_model()
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
@@ -12,6 +14,13 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'birth_date', 'gender', 'experience_level', 'fitness_goal', 
             'workout_days_per_week', 'workout_duration_minutes', 'is_onboarded'
         )
+
+    def get_profile_picture(self, obj):
+        if obj.profile_picture:
+            return obj.profile_picture.url
+        # Nueva foto por defecto oficial de Heft
+        return "https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png"
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

@@ -40,13 +40,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final data = {
       'gender': _gender,
       'height': _height,
+      'weight': _weight,
       'experience_level': _experience,
       'fitness_goal': _goal,
       'workout_days_per_week': _daysPerWeek,
       'workout_duration_minutes': _duration,
     };
 
-    await ref.read(authProvider.notifier).completeOnboarding(data);
+    await ref.read(authProvider.notifier).updateProfile(data: data);
     
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(

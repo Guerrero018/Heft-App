@@ -39,12 +39,12 @@ class ProfileScreen extends ConsumerWidget {
                           width: 2,
                         ),
                       ),
-                      child: const CircleAvatar(
+                      child: CircleAvatar(
                         radius: 60,
                         backgroundColor: AppTheme.cardColor,
-                        backgroundImage: NetworkImage(
-                          'https://api.dicebear.com/7.x/avataaars/png?seed=Felix',
-                        ),
+                        backgroundImage: (user?['profile_picture'] != null && user!['profile_picture'].toString().isNotEmpty)
+                            ? NetworkImage(user['profile_picture'])
+                            : const NetworkImage('https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png'),
                       ),
                     ),
                     Positioned(

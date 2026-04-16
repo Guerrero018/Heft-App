@@ -296,6 +296,7 @@ class AuthNotifier extends Notifier<AuthState> {
           'profile_picture': await MultipartFile.fromFile(
             imagePath,
             filename: 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            contentType: DioMediaType('image', 'jpeg'),
           ),
         });
         sendData = formData;

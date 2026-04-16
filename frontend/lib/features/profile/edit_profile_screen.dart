@@ -164,9 +164,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         backgroundColor: AppTheme.cardColor,
                         backgroundImage: _imageFile != null 
                           ? FileImage(_imageFile!) as ImageProvider
-                          : (user?['profile_picture'] != null 
-                              ? NetworkImage(user!['profile_picture'])
-                              : const NetworkImage('https://api.dicebear.com/7.x/avataaars/png?seed=Felix')),
+                          : ((user?['profile_picture'] != null && user!['profile_picture'].toString().isNotEmpty)
+                              ? NetworkImage(user['profile_picture'])
+                              : const NetworkImage('https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png')),
                       ),
                     ),
                     Positioned(
