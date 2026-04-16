@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
@@ -78,8 +80,11 @@ class AuthNotifier extends Notifier<AuthState> {
         final user = response.data['user'];
         final isOnboarded = user != null ? user['is_onboarded'] == true : false;
         
-        // Guardar estado de onboarding
+        // Guardar estado de onboarding y datos del usuario localmente
         await _storage.write(key: AppConstants.onboardedKey, value: isOnboarded.toString());
+        if (user != null) {
+          await _storage.write(key: 'user_data', value: jsonEncode(user));
+        }
 
         state = state.copyWith(
           isLoading: false,
@@ -130,8 +135,11 @@ class AuthNotifier extends Notifier<AuthState> {
           final user = tokens['user'];
           final isOnboarded = user != null ? user['is_onboarded'] == true : false;
           
-          // Guardar estado de onboarding
+          // Guardar estado de onboarding y datos del usuario localmente
           await _storage.write(key: AppConstants.onboardedKey, value: isOnboarded.toString());
+          if (user != null) {
+            await _storage.write(key: 'user_data', value: jsonEncode(user));
+          }
 
           state = state.copyWith(
             isLoading: false,
@@ -243,8 +251,11 @@ class AuthNotifier extends Notifier<AuthState> {
         final user = response.data['user'];
         final isOnboarded = user != null ? user['is_onboarded'] == true : false;
         
-        // Guardar estado de onboarding
+        // Guardar estado de onboarding y datos locales
         await _storage.write(key: AppConstants.onboardedKey, value: isOnboarded.toString());
+        if (user != null) {
+          await _storage.write(key: 'user_data', value: jsonEncode(user));
+        }
         
         print('🎊 Login exitoso! Onboarded: $isOnboarded');
 
@@ -274,20 +285,45 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<void> completeOnboarding(Map<String, dynamic> data) async {
+  Future<void> updateProfile({Map<String, dynamic>? data, String? imagePath}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
+      dynamic sendData;
+      
+      if (imagePath != null) {
+        final formData = FormData.fromMap({
+          if (data != null) ...data,
+          'profile_picture': await MultipartFile.fromFile(
+            imagePath,
+            filename: 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          ),
+        });
+        sendData = formData;
+      } else {
+        sendData = data;
+      }
+
       final response = await apiClient.patch(
         'auth/profile/update/',
-        data: data,
+        data: sendData,
       );
 
       if (response.statusCode == 200) {
+        final updatedUser = response.data;
         await _storage.write(key: AppConstants.onboardedKey, value: 'true');
-        state = state.copyWith(isOnboarded: true, isLoading: false);
+        await _storage.write(key: 'user_data', value: jsonEncode(updatedUser));
+        state = state.copyWith(
+          isOnboarded: true, 
+          isLoading: false, 
+          user: updatedUser,
+          isAuthenticated: true,
+        );
       }
+    } on DioException catch (e) {
+      final msg = e.response?.data?.toString() ?? 'Error al actualizar perfil';
+      state = state.copyWith(isLoading: false, error: msg);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Failed to save onboarding data');
+      state = state.copyWith(isLoading: false, error: 'Fallo al guardar perfil');
     }
   }
 
@@ -295,15 +331,30 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       final token = await _storage.read(key: AppConstants.tokenKey);
       final onboardedStr = await _storage.read(key: AppConstants.onboardedKey);
+      final localUserData = await _storage.read(key: 'user_data');
       
       print('🔍 Verificando sesión... Token: ${token != null ? 'SÍ' : 'NO'}');
 
       if (token != null) {
-        // Intentar cargar el perfil real desde el servidor
+        // CARGA RÁPIDA: Si tenemos datos locales, los ponemos ya mismo
+        if (localUserData != null) {
+          try {
+            final user = jsonDecode(localUserData);
+            state = state.copyWith(
+              isAuthenticated: true,
+              isOnboarded: user['is_onboarded'] == true,
+              user: user,
+              isLoading: false,
+            );
+          } catch (_) {}
+        }
+
+        // SINCRONIZACIÓN: Intentar cargar el perfil fresco desde el servidor
         try {
           final response = await apiClient.get('auth/profile/update/');
           if (response.statusCode == 200) {
             final userData = response.data;
+            await _storage.write(key: 'user_data', value: jsonEncode(userData));
             state = state.copyWith(
               isAuthenticated: true,
               isOnboarded: userData['is_onboarded'] == true,
@@ -313,15 +364,17 @@ class AuthNotifier extends Notifier<AuthState> {
             return;
           }
         } catch (e) {
-          print('⚠️ Error al cargar perfil detallado: $e');
+          print('⚠️ Error al sincronizar perfil: $e');
         }
 
-        // Si falla la carga del perfil, al menos mantemos la sesión básica
-        state = state.copyWith(
-          isAuthenticated: true,
-          isOnboarded: onboardedStr == 'true',
-          isLoading: false,
-        );
+        // Si falló la sincronización pero no teníamos carga rápida, al menos ponemos el estado básico
+        if (state.user == null) {
+          state = state.copyWith(
+            isAuthenticated: true,
+            isOnboarded: onboardedStr == 'true',
+            isLoading: false,
+          );
+        }
       } else {
         state = state.copyWith(isLoading: false, isAuthenticated: false);
       }

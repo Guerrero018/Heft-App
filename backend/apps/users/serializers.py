@@ -8,7 +8,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'email', 'height', 'units_preference', 
+            'id', 'username', 'email', 'height', 'weight', 'profile_picture', 'units_preference', 
             'birth_date', 'gender', 'experience_level', 'fitness_goal', 
             'workout_days_per_week', 'workout_duration_minutes', 'is_onboarded'
         )
@@ -24,12 +24,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     fitness_goal = serializers.CharField(required=False)
     workout_days_per_week = serializers.IntegerField(required=False)
     workout_duration_minutes = serializers.IntegerField(required=False)
+    weight = serializers.FloatField(required=False)
 
     class Meta:
         model = User
         fields = (
             'id', 'username', 'email', 'password', 'tokens',
-            'height', 'gender', 'experience_level', 'fitness_goal',
+            'height', 'weight', 'gender', 'experience_level', 'fitness_goal',
             'workout_days_per_week', 'workout_duration_minutes'
         )
 
@@ -50,6 +51,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         onboarding_data = {
             'height': validated_data.pop('height', None),
+            'weight': validated_data.pop('weight', None),
             'gender': validated_data.pop('gender', None),
             'experience_level': validated_data.pop('experience_level', None),
             'fitness_goal': validated_data.pop('fitness_goal', None),

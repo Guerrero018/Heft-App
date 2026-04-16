@@ -18,6 +18,9 @@ class User(AbstractUser):
     workout_duration_minutes = models.IntegerField(default=60)
     muscle_focus = models.JSONField(default=list, blank=True)
     
+    weight = models.FloatField(null=True, blank=True, help_text="Current weight in kg")
+    profile_picture = models.ImageField(upload_to="profile_pics", null=True, blank=True)
+    
     is_onboarded = models.BooleanField(default=False)
 
     def __str__(self):

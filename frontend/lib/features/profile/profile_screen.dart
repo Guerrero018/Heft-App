@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_provider.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -51,7 +52,10 @@ class ProfileScreen extends ConsumerWidget {
                       right: 0,
                       child: GestureDetector(
                         onTap: () {
-                          // TODO: Implement image picker
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                          );
                         },
                         child: Container(
                           padding: const EdgeInsets.all(8),
@@ -60,7 +64,7 @@ class ProfileScreen extends ConsumerWidget {
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.camera_alt,
+                            Icons.edit,
                             color: Colors.black,
                             size: 20,
                           ),
@@ -106,7 +110,12 @@ class ProfileScreen extends ConsumerWidget {
               _buildProfileOption(
                 icon: Icons.person_outline,
                 title: 'Información Personal',
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                  );
+                },
               ),
               _buildProfileOption(
                 icon: Icons.notifications_none,
