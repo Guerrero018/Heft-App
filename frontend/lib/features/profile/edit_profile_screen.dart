@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_provider.dart';
 
@@ -28,8 +29,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     super.initState();
     final user = ref.read(authProvider).user;
     _usernameController = TextEditingController(text: user?['username'] ?? '');
-    _weightController = TextEditingController(text: user?['weight']?.toString() ?? '');
-    _heightController = TextEditingController(text: user?['height']?.toString() ?? '');
+    _weightController = TextEditingController(text: user?['weight'] != null 
+        ? double.parse(user!['weight'].toString()).toStringAsFixed(1) : '');
+    _heightController = TextEditingController(text: user?['height'] != null 
+        ? double.parse(user!['height'].toString()).toInt().toString() : '');
     _selectedGoal = user?['fitness_goal'];
     if (!_goals.contains(_selectedGoal)) {
        _selectedGoal = _goals.first;
@@ -165,8 +168,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         backgroundImage: _imageFile != null 
                           ? FileImage(_imageFile!) as ImageProvider
                           : ((user?['profile_picture'] != null && user!['profile_picture'].toString().isNotEmpty)
-                              ? NetworkImage(user['profile_picture'])
-                              : const NetworkImage('https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png')),
+                              ? CachedNetworkImageProvider(user['profile_picture'])
+                              : const CachedNetworkImageProvider('https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png') as ImageProvider),
                       ),
                     ),
                     Positioned(

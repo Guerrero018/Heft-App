@@ -304,10 +304,10 @@ class AuthNotifier extends Notifier<AuthState> {
         sendData = data;
       }
 
-      final response = await apiClient.patch(
-        'auth/profile/update/',
-        data: sendData,
-      );
+      // Usamos PUT en lugar de PATCH si hay imagen, ya que es más robusto con Multipart
+      final response = await (imagePath != null 
+        ? apiClient.post('auth/profile/update/', data: sendData) // Usamos POST como alternativa si PATCH falla
+        : apiClient.patch('auth/profile/update/', data: sendData));
 
       if (response.statusCode == 200) {
         final updatedUser = response.data;
@@ -325,6 +325,19 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(isLoading: false, error: msg);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: 'Fallo al guardar perfil');
+    }
+  }
+
+  Future<void> syncProfile() async {
+    try {
+      final response = await apiClient.get('auth/profile/');
+      if (response.statusCode == 200) {
+        final user = response.data;
+        await _storage.write(key: 'user_data', value: jsonEncode(user));
+        state = state.copyWith(user: user, isAuthenticated: true, isOnboarded: user['is_onboarded'] == true);
+      }
+    } catch (e) {
+      print('Error syncing profile: $e');
     }
   }
 
@@ -350,32 +363,8 @@ class AuthNotifier extends Notifier<AuthState> {
           } catch (_) {}
         }
 
-        // SINCRONIZACIÓN: Intentar cargar el perfil fresco desde el servidor
-        try {
-          final response = await apiClient.get('auth/profile/update/');
-          if (response.statusCode == 200) {
-            final userData = response.data;
-            await _storage.write(key: 'user_data', value: jsonEncode(userData));
-            state = state.copyWith(
-              isAuthenticated: true,
-              isOnboarded: userData['is_onboarded'] == true,
-              user: userData,
-              isLoading: false,
-            );
-            return;
-          }
-        } catch (e) {
-          print('⚠️ Error al sincronizar perfil: $e');
-        }
-
-        // Si falló la sincronización pero no teníamos carga rápida, al menos ponemos el estado básico
-        if (state.user == null) {
-          state = state.copyWith(
-            isAuthenticated: true,
-            isOnboarded: onboardedStr == 'true',
-            isLoading: false,
-          );
-        }
+        // SINCRONIZACIÓN: Refrescar datos desde el servidor en segundo plano
+        syncProfile();
       } else {
         state = state.copyWith(isLoading: false, isAuthenticated: false);
       }

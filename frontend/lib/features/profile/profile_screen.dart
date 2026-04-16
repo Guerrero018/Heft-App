@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_provider.dart';
 import 'edit_profile_screen.dart';
@@ -43,8 +44,8 @@ class ProfileScreen extends ConsumerWidget {
                         radius: 60,
                         backgroundColor: AppTheme.cardColor,
                         backgroundImage: (user?['profile_picture'] != null && user!['profile_picture'].toString().isNotEmpty)
-                            ? NetworkImage(user['profile_picture'])
-                            : const NetworkImage('https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png'),
+                            ? CachedNetworkImageProvider(user['profile_picture'])
+                            : const CachedNetworkImageProvider('https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png') as ImageProvider,
                       ),
                     ),
                     Positioned(
@@ -98,8 +99,12 @@ class ProfileScreen extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildStatItem('Peso', '${user?['weight'] ?? '--'} kg'),
-                    _buildStatItem('Altura', '${user?['height'] ?? '--'} cm'),
+                    _buildStatItem('Peso', user?['weight'] != null 
+                        ? '${double.parse(user!['weight'].toString()).toStringAsFixed(1)} kg' 
+                        : '-- kg'),
+                    _buildStatItem('Altura', user?['height'] != null 
+                        ? '${double.parse(user!['height'].toString()).toInt()} cm' 
+                        : '-- cm'),
                     _buildStatItem('Meta', user?['fitness_goal'] ?? 'Gana Músculo'),
                   ],
                 ),
