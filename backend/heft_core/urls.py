@@ -32,6 +32,7 @@ urlpatterns = [
     path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/profile/', include([
+        path('', users_views.ProfileView.as_view(), name='auth_profile'),
         path('update/', users_views.UpdateProfileView.as_view(), name='auth_update_profile'),
     ])),
     # Social Auth

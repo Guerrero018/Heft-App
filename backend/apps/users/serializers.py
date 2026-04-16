@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 User = get_user_model()
 
 class CustomUserSerializer(serializers.ModelSerializer):
-    profile_picture = serializers.SerializerMethodField()
+    profile_picture = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = User
@@ -15,11 +15,29 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'workout_days_per_week', 'workout_duration_minutes', 'is_onboarded'
         )
 
-    def get_profile_picture(self, obj):
-        if obj.profile_picture:
-            return obj.profile_picture.url
-        # Nueva foto por defecto oficial de Heft
-        return "https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png"
+    def to_representation(self, instance):
+        """Sobrescribimos para devolver siempre la URL completa/Cloudinary/Default"""
+        ret = super().to_representation(instance)
+        
+        # Lógica para obtener la URL correcta
+        if instance.profile_picture:
+            url = instance.profile_picture.url
+            # Si es local, asegurar absoluta
+            if url.startswith('/media/'):
+                request = self.context.get('request')
+                if request:
+                    url = request.build_absolute_uri(url)
+                else:
+                    url = f"http://10.0.2.2:8000{url}"
+            # Asegurar HTTPS si es Cloudinary pero viene como HTTP
+            elif url.startswith('http://'):
+                url = url.replace('http://', 'https://', 1)
+            ret['profile_picture'] = url
+        else:
+            # Foto por defecto oficial de Heft
+            ret['profile_picture'] = "https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png"
+            
+        return ret
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -48,7 +66,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return {
             'refresh': str(refresh),
             'access': str(refresh.access_token),
-            'user': CustomUserSerializer(user).data
+            'user': CustomUserSerializer(user, context=self.context).data
         }
 
     def validate_email(self, value):

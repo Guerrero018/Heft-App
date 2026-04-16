@@ -31,16 +31,34 @@ class CheckEmailView(APIView):
         exists = User.objects.filter(email__iexact=email).exists()
         return Response({'exists': exists})
 
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
 class UpdateProfileView(generics.UpdateAPIView):
     queryset = User.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = CustomUserSerializer
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+
+    def get_object(self):
+        return self.request.user
+
+    def post(self, request, *args, **kwargs):
+        """Permitir POST para actualizaciones (más robusto para subida de archivos)"""
+        return self.partial_update(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        serializer.save(is_onboarded=True)
+
+class ProfileView(generics.RetrieveAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = CustomUserSerializer
 
     def get_object(self):
         return self.request.user
 
-    def perform_update(self, serializer):
-        serializer.save(is_onboarded=True)
+    def get(self, request, *args, **kwargs):
+        serializer = self.get_serializer(self.get_object(), context={'request': request})
+        return Response(serializer.data)
 
 class GoogleDirectLogin(APIView):
     permission_classes = (permissions.AllowAny,)
@@ -73,7 +91,7 @@ class GoogleDirectLogin(APIView):
             return Response({
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
-                'user': CustomUserSerializer(user).data
+                'user': CustomUserSerializer(user, context={'request': request}).data
             })
 
         except ValueError as e:
