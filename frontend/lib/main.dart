@@ -25,9 +25,7 @@ class HeftApp extends ConsumerWidget {
       home: authState.isLoading
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : authState.isAuthenticated
-              ? (authState.isOnboarded
-                  ? const HomeScreen()
-                  : const OnboardingScreen())
+              ? const HomeScreen()
               : const LoginScreen(),
     );
   }

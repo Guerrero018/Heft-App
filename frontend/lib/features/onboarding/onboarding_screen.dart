@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_provider.dart';
+import '../home/home_screen.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -35,10 +36,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
-  void _finishOnboarding() {
-    // Here we would call an API to save the data
-    // For now, we just simulate success
-    ref.read(authProvider.notifier).completeOnboarding();
+  void _finishOnboarding() async {
+    final data = {
+      'gender': _gender,
+      'height': _height,
+      'experience_level': _experience,
+      'fitness_goal': _goal,
+      'workout_days_per_week': _daysPerWeek,
+      'workout_duration_minutes': _duration,
+    };
+
+    await ref.read(authProvider.notifier).completeOnboarding(data);
+    
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import 'auth_provider.dart';
+import '../onboarding/onboarding_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -48,9 +49,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     await ref.read(authProvider.notifier).register(username, email, password);
 
-    // If registration is successful and the widget is still mounted, pop the screen
+    // Si el registro es un éxito, mandamos al cuestionario (porque es nuevo)
     if (mounted && ref.read(authProvider).isAuthenticated) {
-      Navigator.of(context).pop();
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+      );
     }
   }
 
@@ -257,8 +260,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 child: OutlinedButton(
                   onPressed: () async {
                     await ref.read(authProvider.notifier).loginWithGoogle();
-                    if (mounted && ref.read(authProvider).isAuthenticated) {
-                      Navigator.of(context).pop();
+                    final authState = ref.read(authProvider);
+                    if (mounted && authState.isAuthenticated) {
+                      if (!authState.isOnboarded) {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => const OnboardingScreen(),
+                          ),
+                        );
+                      } else {
+                        Navigator.of(context).pop();
+                      }
                     }
                   },
                   style: OutlinedButton.styleFrom(

@@ -38,8 +38,9 @@ class AuthNotifier extends Notifier<AuthState> {
 
   @override
   AuthState build() {
-    // We can check auth here or in main.dart
-    return AuthState();
+    // Verificamos la sesión en el siguiente frame para no bloquear el build
+    Future.microtask(() => checkAuth());
+    return AuthState(isLoading: true);
   }
 
   Future<void> login(String email, String password) async {
@@ -60,6 +61,9 @@ class AuthNotifier extends Notifier<AuthState> {
 
         final user = response.data['user'];
         final isOnboarded = user != null ? user['is_onboarded'] == true : false;
+        
+        // Guardar estado de onboarding
+        await _storage.write(key: AppConstants.onboardedKey, value: isOnboarded.toString());
 
         state = state.copyWith(
           isLoading: false,
@@ -68,7 +72,7 @@ class AuthNotifier extends Notifier<AuthState> {
         );
       }
     } on DioException catch (e) {
-      final message = e.response?.data['detail'] ?? 'Login failed';
+      final message = e.response?.data['detail'] ?? e.response?.data['error'] ?? 'Login failed';
       state = state.copyWith(isLoading: false, error: message);
     } catch (e) {
       state = state.copyWith(
@@ -78,13 +82,20 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<void> register(String username, String email, String password) async {
+  Future<void> register(String username, String email, String password, {Map<String, dynamic>? onboardingData}) async {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
+      final registerData = {
+        'username': username,
+        'email': email,
+        'password': password,
+        ...?onboardingData,
+      };
+
       final response = await apiClient.post(
         'auth/register/',
-        data: {'username': username, 'email': email, 'password': password},
+        data: registerData,
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -101,6 +112,9 @@ class AuthNotifier extends Notifier<AuthState> {
 
           final user = tokens['user'];
           final isOnboarded = user != null ? user['is_onboarded'] == true : false;
+          
+          // Guardar estado de onboarding
+          await _storage.write(key: AppConstants.onboardedKey, value: isOnboarded.toString());
 
           state = state.copyWith(
             isLoading: false,
@@ -118,6 +132,7 @@ class AuthNotifier extends Notifier<AuthState> {
           final data = e.response!.data as Map;
           message =
               data['detail'] ??
+              data['error'] ??
               (data['username'] != null ? data['username'][0] : null) ??
               (data['email'] != null ? data['email'][0] : null) ??
               (data['password'] != null ? data['password'][0] : null) ??
@@ -137,6 +152,7 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> logout() async {
     await _storage.delete(key: AppConstants.tokenKey);
     await _storage.delete(key: AppConstants.refreshTokenKey);
+    await _storage.delete(key: AppConstants.onboardedKey);
     state = AuthState(isAuthenticated: false);
   }
 
@@ -199,6 +215,9 @@ class AuthNotifier extends Notifier<AuthState> {
         final user = response.data['user'];
         final isOnboarded = user != null ? user['is_onboarded'] == true : false;
         
+        // Guardar estado de onboarding
+        await _storage.write(key: AppConstants.onboardedKey, value: isOnboarded.toString());
+        
         print('🎊 Login exitoso! Onboarded: $isOnboarded');
 
         state = state.copyWith(
@@ -212,7 +231,8 @@ class AuthNotifier extends Notifier<AuthState> {
       
       String message = 'Error con el servidor de Google';
       if (e.response?.data != null && e.response?.data is Map) {
-        message = e.response?.data['detail'] ?? message;
+        final data = e.response!.data as Map;
+        message = data['detail'] ?? data['error'] ?? message;
       } else if (e.response?.data != null && e.response?.data is String) {
         // El servidor devolvió una página HTML de error (probablemente error 500)
         message = 'Error del servidor (HTML): ${e.response?.statusCode}';
@@ -225,16 +245,42 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<void> completeOnboarding() async {
-    // Aquí llamaríamos al backend para guardar los datos y poner is_onboarded = true
-    // Por ahora simulamos éxito localmente
-    state = state.copyWith(isOnboarded: true);
+  Future<void> completeOnboarding(Map<String, dynamic> data) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final response = await apiClient.patch(
+        'auth/profile/update/',
+        data: data,
+      );
+
+      if (response.statusCode == 200) {
+        await _storage.write(key: AppConstants.onboardedKey, value: 'true');
+        state = state.copyWith(isOnboarded: true, isLoading: false);
+      }
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'Failed to save onboarding data');
+    }
   }
 
   Future<void> checkAuth() async {
-    final token = await _storage.read(key: AppConstants.tokenKey);
-    if (token != null) {
-      state = state.copyWith(isAuthenticated: true);
+    try {
+      final token = await _storage.read(key: AppConstants.tokenKey);
+      final onboardedStr = await _storage.read(key: AppConstants.onboardedKey);
+      
+      print('🔍 Verificando sesión... Token: ${token != null ? 'SÍ' : 'NO'}');
+
+      if (token != null) {
+        state = state.copyWith(
+          isAuthenticated: true,
+          isOnboarded: onboardedStr == 'true',
+          isLoading: false,
+        );
+      } else {
+        state = state.copyWith(isLoading: false, isAuthenticated: false);
+      }
+    } catch (e) {
+      print('❌ Error al verificar sesión: $e');
+      state = state.copyWith(isLoading: false, isAuthenticated: false);
     }
   }
 }

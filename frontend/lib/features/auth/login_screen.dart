@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import 'auth_provider.dart';
 import 'register_screen.dart';
+import '../onboarding/onboarding_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -217,7 +218,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ),
                 child: OutlinedButton(
-                  onPressed: () => ref.read(authProvider.notifier).loginWithGoogle(),
+                  onPressed: () async {
+                    await ref.read(authProvider.notifier).loginWithGoogle();
+                    final authState = ref.read(authProvider);
+                    if (mounted && authState.isAuthenticated && !authState.isOnboarded) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => const OnboardingScreen(),
+                        ),
+                      );
+                    }
+                  },
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
                     padding: const EdgeInsets.symmetric(vertical: 18),

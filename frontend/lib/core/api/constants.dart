@@ -4,4 +4,5 @@ class AppConstants {
 
   static const String tokenKey = 'heft_access_token';
   static const String refreshTokenKey = 'heft_refresh_token';
+  static const String onboardedKey = 'heft_is_onboarded';
 }
