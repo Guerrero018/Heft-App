@@ -21,7 +21,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import CustomUserSerializer
+from .serializers import CustomUserSerializer, RegisterSerializer
+
+class CheckEmailView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        email = request.data.get('email', '').lower().strip()
+        exists = User.objects.filter(email__iexact=email).exists()
+        return Response({'exists': exists})
 
 class UpdateProfileView(generics.UpdateAPIView):
     queryset = User.objects.all()

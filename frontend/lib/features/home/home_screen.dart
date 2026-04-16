@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../profile/profile_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -16,7 +17,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final List<Widget> _pages = const [
     _InicioTab(),
     _EstadisticasTab(),
-    _PerfilTab(),
+    ProfileScreen(),
   ];
 
   @override
@@ -238,28 +239,4 @@ class _EstadisticasTab extends StatelessWidget {
   }
 }
 
-class _PerfilTab extends ConsumerWidget {
-  const _PerfilTab();
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            'Perfil',
-            style: TextStyle(color: AppTheme.textColor, fontSize: 24),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(authProvider.notifier).logout();
-            },
-            child: const Text('Cerrar Sesión'),
-          ),
-        ],
-      ),
-    );
-  }
-}

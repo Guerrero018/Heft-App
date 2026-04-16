@@ -6,6 +6,7 @@ class AppTheme {
   static const Color secondaryColor = Color(0xFF2ECC71);
   static const Color textColor = Color(0xFFFFFFFF);
   static const Color hintColor = Color(0xFF888888);
+  static const Color cardColor = Color(0xFF1E1E1E);
 
   static final ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,

@@ -26,6 +26,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # JWT Authentication
     path('api/auth/register/', users_views.RegisterView.as_view(), name='auth_register'),
+    path('api/auth/check-email/', users_views.CheckEmailView.as_view(), name='auth_check_email'),
     path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/profile/', include([

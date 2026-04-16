@@ -9,12 +9,14 @@ class AuthState {
   final bool isAuthenticated;
   final bool isLoading;
   final bool isOnboarded;
+  final Map<String, dynamic>? user;
   final String? error;
 
   AuthState({
     this.isAuthenticated = false,
     this.isLoading = false,
     this.isOnboarded = false,
+    this.user,
     this.error,
   });
 
@@ -22,12 +24,14 @@ class AuthState {
     bool? isAuthenticated,
     bool? isLoading,
     bool? isOnboarded,
+    Map<String, dynamic>? user,
     String? error,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       isLoading: isLoading ?? this.isLoading,
       isOnboarded: isOnboarded ?? this.isOnboarded,
+      user: user ?? this.user,
       error: error ?? this.error,
     );
   }
@@ -41,6 +45,18 @@ class AuthNotifier extends Notifier<AuthState> {
     // Verificamos la sesión en el siguiente frame para no bloquear el build
     Future.microtask(() => checkAuth());
     return AuthState(isLoading: true);
+  }
+
+  Future<bool> checkEmail(String email) async {
+    try {
+      final response = await apiClient.post(
+        'auth/check-email/',
+        data: {'email': email},
+      );
+      return response.data['exists'] ?? false;
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<void> login(String email, String password) async {
@@ -69,6 +85,7 @@ class AuthNotifier extends Notifier<AuthState> {
           isLoading: false,
           isAuthenticated: true,
           isOnboarded: isOnboarded,
+          user: user,
         );
       }
     } on DioException catch (e) {
@@ -120,6 +137,7 @@ class AuthNotifier extends Notifier<AuthState> {
             isLoading: false,
             isAuthenticated: true,
             isOnboarded: isOnboarded,
+            user: user,
           );
         } else {
           await login(username, password);
@@ -224,6 +242,7 @@ class AuthNotifier extends Notifier<AuthState> {
           isLoading: false,
           isAuthenticated: true,
           isOnboarded: isOnboarded,
+          user: user,
         );
       }
     } on DioException catch (e) {
@@ -270,6 +289,24 @@ class AuthNotifier extends Notifier<AuthState> {
       print('🔍 Verificando sesión... Token: ${token != null ? 'SÍ' : 'NO'}');
 
       if (token != null) {
+        // Intentar cargar el perfil real desde el servidor
+        try {
+          final response = await apiClient.get('auth/profile/update/');
+          if (response.statusCode == 200) {
+            final userData = response.data;
+            state = state.copyWith(
+              isAuthenticated: true,
+              isOnboarded: userData['is_onboarded'] == true,
+              user: userData,
+              isLoading: false,
+            );
+            return;
+          }
+        } catch (e) {
+          print('⚠️ Error al cargar perfil detallado: $e');
+        }
+
+        // Si falla la carga del perfil, al menos mantemos la sesión básica
         state = state.copyWith(
           isAuthenticated: true,
           isOnboarded: onboardedStr == 'true',
