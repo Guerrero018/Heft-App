@@ -168,10 +168,20 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    try {
+      // Intentar cerrar sesión de Google si existe
+      final googleSignIn = gsi.GoogleSignIn();
+      await googleSignIn.signOut();
+    } catch (e) {
+      print('ℹ️ No había sesión de Google activa o falló el cierre: $e');
+    }
+
     await _storage.delete(key: AppConstants.tokenKey);
     await _storage.delete(key: AppConstants.refreshTokenKey);
     await _storage.delete(key: AppConstants.onboardedKey);
-    state = AuthState(isAuthenticated: false);
+    
+    // Reiniciamos el estado a cero
+    state = AuthState(isAuthenticated: false, user: null, isOnboarded: false);
   }
 
   Future<void> loginWithGoogle() async {
