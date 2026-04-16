@@ -23,6 +23,17 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import CustomUserSerializer
 
+class UpdateProfileView(generics.UpdateAPIView):
+    queryset = User.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = CustomUserSerializer
+
+    def get_object(self):
+        return self.request.user
+
+    def perform_update(self, serializer):
+        serializer.save(is_onboarded=True)
+
 class GoogleDirectLogin(APIView):
     permission_classes = (permissions.AllowAny,)
 
@@ -39,7 +50,7 @@ class GoogleDirectLogin(APIView):
             idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), client_id)
 
             # Extraer info (Google devuelve 'sub' como ID único del usuario)
-            email = idinfo['email']
+            email = idinfo['email'].lower().strip()
             username = email.split('@')[0] # Usar el email como base para el username
             
             # 1. Buscar o crear el usuario en Neon
