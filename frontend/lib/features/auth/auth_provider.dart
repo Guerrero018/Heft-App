@@ -49,15 +49,23 @@ class AuthNotifier extends Notifier<AuthState> {
     return AuthState(isLoading: true);
   }
 
-  Future<bool> checkEmail(String email) async {
+  Future<bool?> checkEmail(String email) async {
     try {
       final response = await apiClient.post(
         'auth/check-email/',
         data: {'email': email},
       );
       return response.data['exists'] ?? false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
+        state = state.copyWith(error: 'El servidor está despertando, por favor intenta de nuevo');
+      } else {
+        state = state.copyWith(error: 'Error de conexión. Revisa tu internet.');
+      }
+      return null;
     } catch (e) {
-      return false;
+      state = state.copyWith(error: 'Error inesperado');
+      return null;
     }
   }
 

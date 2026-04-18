@@ -37,19 +37,28 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _emailError = null;
     });
 
-    // Simulamos un poco de feedback visual
     final exists = await ref.read(authProvider.notifier).checkEmail(email);
 
     if (mounted) {
+      setState(() => _isCheckingEmail = false);
+      
+      if (exists == null) {
+        // Hubo un error de conexión (el error ya se guardó en el provider)
+        final error = ref.read(authProvider).error;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error ?? 'Error de conexión'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
       if (exists) {
         // El usuario existe, pedimos contraseña (Login)
-        setState(() {
-          _showPassword = true;
-          _isCheckingEmail = false;
-        });
+        setState(() => _showPassword = true);
       } else {
         // Usuario nuevo, lo llevamos al registro directamente
-        setState(() => _isCheckingEmail = false);
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => RegisterScreen(initialEmail: email),

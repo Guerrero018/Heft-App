@@ -3,10 +3,12 @@ from .models import Routine, RoutineExercise
 from apps.exercises.serializers import ExerciseSerializer
 
 class RoutineExerciseSerializer(serializers.ModelSerializer):
-    # This nested serializer allows writing when creating routines
+    exercise_name = serializers.ReadOnlyField(source='exercise.name')
+    muscle_group = serializers.ReadOnlyField(source='exercise.muscle_group')
+    
     class Meta:
         model = RoutineExercise
-        fields = ['id', 'exercise', 'order', 'target_sets', 'target_reps', 'target_weight']
+        fields = ['id', 'exercise', 'exercise_name', 'muscle_group', 'order', 'target_sets', 'target_reps', 'target_weight']
 
 class RoutineSerializer(serializers.ModelSerializer):
     exercises = RoutineExerciseSerializer(many=True, required=False)

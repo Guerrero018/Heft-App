@@ -3,17 +3,20 @@ from .models import WorkoutSession, WorkoutSet
 from apps.exercises.serializers import ExerciseSerializer
 
 class WorkoutSetSerializer(serializers.ModelSerializer):
+    exercise_name = serializers.ReadOnlyField(source='exercise.name')
+
     class Meta:
         model = WorkoutSet
-        fields = ['id', 'exercise', 'set_number', 'weight', 'reps', 'is_completed']
+        fields = ['id', 'exercise', 'exercise_name', 'set_number', 'weight', 'reps', 'is_completed']
 
 class WorkoutSessionSerializer(serializers.ModelSerializer):
     sets = WorkoutSetSerializer(many=True, required=False)
+    routine_name = serializers.ReadOnlyField(source='routine.name')
 
     class Meta:
         model = WorkoutSession
-        fields = ['id', 'date', 'notes', 'sets']
-        read_only_fields = ('user',)
+        fields = ['id', 'routine', 'routine_name', 'name', 'date', 'start_time', 'end_time', 'notes', 'is_completed', 'sets']
+        read_only_fields = ('user', 'start_time')
 
     def create(self, validated_data):
         sets_data = validated_data.pop('sets', [])

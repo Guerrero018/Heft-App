@@ -109,7 +109,52 @@ class ProfileScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
+
+              // Vitrina de Logros
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.workspace_premium, color: AppTheme.primaryColor, size: 24),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Vitrina de Logros',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _buildAchievementCard(
+                          icon: Icons.emoji_events,
+                          title: '100kg Club',
+                          subtitle: '(Banca)',
+                          iconColor: Colors.orangeAccent,
+                          circleColor: Colors.orangeAccent.withOpacity(0.1),
+                        ),
+                        const SizedBox(width: 16),
+                        _buildAchievementCard(
+                          icon: Icons.local_fire_department,
+                          title: 'Constancia',
+                          subtitle: '(30 días)',
+                          iconColor: Colors.redAccent,
+                          circleColor: Colors.redAccent.withOpacity(0.1),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
 
               // Menu Options
               _buildProfileOption(
@@ -219,6 +264,55 @@ class ProfileScreen extends ConsumerWidget {
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
         ),
         trailing: const Icon(Icons.chevron_right, color: AppTheme.hintColor),
+      ),
+    );
+  }
+
+  Widget _buildAchievementCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color iconColor,
+    required Color circleColor,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: circleColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: iconColor, size: 28),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
