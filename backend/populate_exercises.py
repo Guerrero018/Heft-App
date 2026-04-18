@@ -2,7 +2,8 @@ import os
 import django
 import requests
 import time
-from deep_translator import GoogleTranslator
+import json
+from google import genai
 
 # Configurar el entorno de Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'heft_core.settings')
@@ -11,131 +12,150 @@ django.setup()
 from apps.exercises.models import Exercise
 
 # --- CONFIGURACIÓN ---
-RAPIDAPI_KEY = "TU_API_KEY_AQUI" # Reemplaza con tu key de RapidAPI
+EXERCISE_DB_KEY = "a20356a4bemsh90baf9002ebbf02p1cf983jsnc41f23636002"
+GEMINI_API_KEY = "AIzaSyCiN4_ps4wcPC3UBUdJ5kTPO6DM512i_e4"
 RAPIDAPI_HOST = "exercisedb.p.rapidapi.com"
 URL = "https://exercisedb.p.rapidapi.com/exercises"
 
+# Modelos para intentar en orden de preferencia
+MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-2.5-flash"]
+current_model_idx = 0
+
+client = genai.Client(api_key=GEMINI_API_KEY)
+
 MUSCLE_MAPPING = {
-    'back': 'back',
-    'cardio': 'cardio',
-    'chest': 'chest',
-    'lower arms': 'forearms',
-    'lower legs': 'calves',
-    'neck': 'traps', # Lo mapeamos a trapecios/cuello
-    'shoulders': 'shoulders',
-    'upper arms': 'biceps', 
-    'upper legs': 'quadriceps',
-    'waist': 'abs',
+    'back': 'back', 'cardio': 'cardio', 'chest': 'chest', 'lower arms': 'forearms',
+    'lower legs': 'calves', 'neck': 'traps', 'shoulders': 'shoulders',
+    'upper arms': 'biceps', 'upper legs': 'quadriceps', 'waist': 'abs'
 }
 
 TARGET_MAPPING = {
-    'biceps': 'biceps',
-    'triceps': 'triceps',
-    'glutes': 'glutes',
-    'hamstrings': 'hamstrings',
-    'quads': 'quadriceps',
-    'adductors': 'adductors',
-    'abductors': 'abductors',
-    'abs': 'abs',
-    'serratus anterior': 'abs',
-    'lats': 'back',
-    'upper back': 'back',
-    'spine': 'lower_back',
-    'traps': 'traps',
-    'levator scapulae': 'traps',
-    'delts': 'shoulders',
-    'pectorals': 'chest',
-    'cardiovascular system': 'cardio',
+    'biceps': 'biceps', 'triceps': 'triceps', 'glutes': 'glutes', 'hamstrings': 'hamstrings',
+    'quads': 'quadriceps', 'adductors': 'adductors', 'abductors': 'abductors', 'abs': 'abs',
+    'serratus anterior': 'abs', 'lats': 'back', 'upper back': 'back', 'spine': 'lower_back',
+    'traps': 'traps', 'levator scapulae': 'traps', 'delts': 'shoulders', 'pectorals': 'chest',
+    'cardiovascular system': 'cardio'
 }
 
 EQUIPMENT_MAPPING = {
-    'barbell': 'barbell',
-    'dumbbell': 'dumbbell',
-    'body weight': 'bodyweight',
-    'cable': 'cable',
-    'kettlebell': 'kettlebell',
-    'machine': 'machine',
-    'smith machine': 'smith_machine',
+    'barbell': 'barbell', 'dumbbell': 'dumbbell', 'body weight': 'bodyweight',
+    'cable': 'cable', 'kettlebell': 'kettlebell', 'machine': 'machine', 'smith machine': 'smith_machine'
 }
 
-translator = GoogleTranslator(source='en', target='es')
-
-def translate_safe(text):
+def translate_mega_batch(batch):
+    global current_model_idx
+    model_id = MODELS_TO_TRY[current_model_idx]
+    
+    prompt = f"""
+    Eres un experto en fitness. Traduce esta lista JSON al español.
+    Nombres técnicos (Curl, Press, Polea).
+    Traduce 'name' e 'instructions'.
+    Response solo JSON.
+    DATA:
+    {json.dumps(batch)}
+    """
+    
     try:
-        if not text: return ""
-        return translator.translate(text)
+        response = client.models.generate_content(
+            model=model_id,
+            config=genai.types.GenerateContentConfig(response_mime_type="application/json"),
+            contents=prompt
+        )
+        return json.loads(response.text)
     except Exception as e:
-        print(f"Error traduciendo '{text}': {e}")
-        return text
+        error_msg = str(e)
+        print(f"   [Error con {model_id}]: {error_msg[:100]}...")
+        
+        # Si el error es de cuota o no encontrado, probamos el siguiente modelo
+        if current_model_idx < len(MODELS_TO_TRY) - 1:
+            print(f"   Cambiando al siguiente modelo disponible...")
+            current_model_idx += 1
+            return translate_mega_batch(batch) # Reintento recursivo con el nuevo modelo
+        
+        raise e
 
 def populate():
-    print("Iniciando limpieza de base de datos...")
+    print("1. Limpiando ejercicios globales...")
     Exercise.objects.filter(is_global=True).delete()
-    print("Base de datos limpia.")
-
-    headers = {
-        "X-RapidAPI-Key": RAPIDAPI_KEY,
-        "X-RapidAPI-Host": RAPIDAPI_HOST
-    }
-
-    print(f"Obteniendo ejercicios de {URL}...")
-    # Pedimos muchos para no paginar demasiado (el límite del basic tier es ~1300 en total)
-    params = {"limit": "1500"} 
     
-    response = requests.get(URL, headers=headers, params=params)
+    print("2. Descargando Dataset de ExerciseDB (vía RapidAPI)...")
+    all_raw = []
+    offset = 0
+    limit = 10 # Forzamos a 10 porque es lo que la API Free suele devolver
     
-    if response.status_code != 200:
-        print(f"Error al conectar con la API: {response.status_code}")
-        print(response.text)
-        return
-
-    exercises_data = response.json()
-    print(f"Se han obtenido {len(exercises_data)} ejercicios.")
-
-    count = 0
-    for data in exercises_data:
+    headers = {"X-RapidAPI-Key": EXERCISE_DB_KEY, "X-RapidAPI-Host": RAPIDAPI_HOST}
+    
+    while True:
         try:
-            name_en = data['name']
+            res = requests.get(URL, headers=headers, params={"limit": limit, "offset": offset})
+            if res.status_code != 200: break
+            data = res.json()
+            if not data: break
+            all_raw.extend(data)
+            if len(all_raw) % 50 == 0:
+                print(f"   -> Descargados {len(all_raw)} ejercicios...")
+            offset += len(data) # Incrementamos por lo recibido realmente
+            if len(data) == 0: break
+            # Limite preventivo para no tardar mil años en pruebas
+            # if len(all_raw) >= 1500: break
+        except: break
+    
+    print(f"\n3. Descarga completa: {len(all_raw)} ejercicios encontrados.")
+    print("4. Iniciando traducción inteligente por bloques...")
+    
+    mega_batch_size = 100 # Reducimos un poco para asegurar que no exceda el limite de respuesta
+    final_count = 0
+    i = 0
+    
+    while i < len(all_raw):
+        chunk = all_raw[i:i + mega_batch_size]
+        to_translate = [{"id": x['id'], "name": x['name'], "instructions": x.get('instructions', [])} for x in chunk]
+        
+        print(f"\n--- MEGA-LOTE {i//mega_batch_size + 1} ({i}/{len(all_raw)}) ---")
+        
+        try:
+            translated_data = translate_mega_batch(to_translate)
             
-            # Mapeo de Músculos
-            muscle = MUSCLE_MAPPING.get(data['bodyPart'], 'others')
-            target = data['target']
-            if target in TARGET_MAPPING:
-                muscle = TARGET_MAPPING[target]
-            
-            # Mapeo de Equipo
-            eq_en = data['equipment']
-            eq_type = EQUIPMENT_MAPPING.get(eq_en, 'other')
-            
-            # Traducción
-            print(f"[{count+1}/{len(exercises_data)}] Procesando: {name_en}...")
-            name_es = translate_safe(name_en).capitalize()
-            # La descripción la podemos armar con los campos o usar instructions
-            instructions = data.get('instructions', [])
-            instructions_es = [translate_safe(step) for step in instructions]
-            
-            Exercise.objects.create(
-                name=name_es,
-                muscle_group=muscle,
-                equipment=eq_en.capitalize(),
-                exercise_type=eq_type,
-                instructions=instructions_es,
-                gif_url=data.get('gifUrl'),
-                is_global=True
-            )
-            count += 1
-            
-            # Pequeño delay para no saturar al traductor ni a la API
-            if count % 10 == 0:
-                time.sleep(1)
-                
-        except Exception as e:
-            print(f"Error procesando ejercicio {data.get('name')}: {e}")
+            if not translated_data:
+                print("   !!! La IA devolvió datos vacíos. Reintentando...")
+                time.sleep(10)
+                continue
 
-    print(f"¡Hecho! Se han insertado {count} ejercicios.")
+            trans_map = {str(t['id']): t for t in translated_data}
+            
+            for raw_ex in chunk:
+                try:
+                    trans_ex = trans_map.get(str(raw_ex['id']), raw_ex)
+                    
+                    muscle = MUSCLE_MAPPING.get(raw_ex['bodyPart'], 'others')
+                    target = raw_ex['target']
+                    if target in TARGET_MAPPING: muscle = TARGET_MAPPING[target]
+                    
+                    Exercise.objects.create(
+                        name=trans_ex['name'].capitalize(),
+                        muscle_group=muscle,
+                        equipment=raw_ex.get('equipment', 'other').capitalize(),
+                        exercise_type=EQUIPMENT_MAPPING.get(raw_ex.get('equipment'), 'other'),
+                        instructions=trans_ex.get('instructions', []),
+                        gif_url=raw_ex.get('gifUrl'),
+                        is_global=True
+                    )
+                    final_count += 1
+                except: pass
+            
+            i += mega_batch_size
+            print(f"   Progreso: {final_count} guardados.")
+            time.sleep(10) # Pausa estratégica para la cuota
+            
+        except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                print("   Límite excedido. Esperando 60s...")
+                time.sleep(60)
+            else:
+                print(f"   Error: {e}. Reintentando en 15s...")
+                time.sleep(15)
+
+    print(f"\n¡INCERCIÓN FINALIZADA! Total: {final_count} ejercicios.")
 
 if __name__ == "__main__":
-    if RAPIDAPI_KEY == "TU_API_KEY_AQUI":
-        print("ERROR: Por favor, introduce tu RAPIDAPI_KEY en el script.")
-    else:
-        populate()
+    populate()
