@@ -19,34 +19,40 @@ class Exercise(models.Model):
     ]
 
     MUSCLE_GROUPS = [
-        ("chest", "Pectoral"),
-        ("back", "Dorsal"),
+        # Tronco Superior
+        ("chest", "Pecho"),
+        ("back", "Espalda"),
         ("shoulders", "Hombros"),
-        # Piernas (Desglosadas)
+        ("traps", "Trapecios"),
+        # Piernas
         ("quadriceps", "Cuádriceps"),
-        ("hamstrings", "Isquiotibiales (Femorales)"),
+        ("hamstrings", "Isquiotibiales"),
         ("calves", "Gemelos"),
         ("glutes", "Glúteos"),
-        ("adductors", "Adductores"),
+        ("adductors", "Aductores"),
         ("abductors", "Abductores"),
-        # Brazos (Desglosados)
+        # Brazos
         ("biceps", "Bíceps"),
         ("triceps", "Tríceps"),
         ("forearms", "Antebrazos"),
-        # Core
+        # Core y Otros
         ("abs", "Abdominales"),
-        # Otros
+        ("lower_back", "Espalda Baja"),
+        ("cardio", "Cardio"),
         ("others", "Otros"),
     ]
 
-    name = models.CharField(max_length=150)
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    instructions = models.JSONField(default=list, blank=True, help_text="Lista de pasos para realizar el ejercicio")
     muscle_group = models.CharField(max_length=50, choices=MUSCLE_GROUPS)
     equipment = models.CharField(
-        max_length=50, blank=True, null=True
+        max_length=100, blank=True, null=True
     )  # Ej: Barra, Mancuerna
     exercise_type = models.CharField(
-        max_length=20, choices=EXERCISE_TYPES, default="weight_reps"
+        max_length=20, choices=EXERCISE_TYPES, default="other"
     )
+    gif_url = models.URLField(blank=True, null=True)
 
     # 3. Lógica de propiedad (Global vs Custom)
     is_global = models.BooleanField(
