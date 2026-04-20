@@ -265,13 +265,38 @@ class _InicioTab extends ConsumerWidget {
   }
 }
 
-class RoutineCard extends StatelessWidget {
+class RoutineCard extends ConsumerWidget {
   final Routine routine;
 
   const RoutineCard({super.key, required this.routine});
 
+  void _confirmDelete(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        title: const Text('Eliminar Rutina', style: TextStyle(color: Colors.white)),
+        content: Text('¿Estás seguro de que deseas eliminar la rutina "${routine.name}"?',
+            style: const TextStyle(color: AppTheme.hintColor)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar', style: TextStyle(color: AppTheme.hintColor)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(routineProvider.notifier).deleteRoutine(routine.id!);
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Extraer grupos musculares únicos para el subtitulo
     final muscleGroups = routine.exercises
         .map((e) => _translateMuscle(e.muscleGroup))
@@ -308,7 +333,43 @@ class RoutineCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const Icon(Icons.more_vert, color: AppTheme.hintColor, size: 20),
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert, color: AppTheme.hintColor, size: 20),
+                        color: AppTheme.cardColor,
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => CreateRoutineScreen(existingRoutine: routine),
+                              ),
+                            );
+                          } else if (value == 'delete') {
+                            _confirmDelete(context, ref);
+                          }
+                        },
+                        itemBuilder: (BuildContext context) => [
+                          const PopupMenuItem<String>(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit, color: AppTheme.textColor, size: 18),
+                                SizedBox(width: 8),
+                                Text('Editar', style: TextStyle(color: AppTheme.textColor)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, color: Colors.redAccent, size: 18),
+                                SizedBox(width: 8),
+                                Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -326,9 +387,13 @@ class RoutineCard extends StatelessWidget {
                         children: [
                           Icon(Icons.circle, size: 6, color: AppTheme.hintColor.withOpacity(0.5)),
                           const SizedBox(width: 8),
-                          Text(
-                            '${e.targetSets} x ${e.exerciseName}',
-                            style: TextStyle(color: AppTheme.textColor.withOpacity(0.7), fontSize: 14),
+                          Expanded(
+                            child: Text(
+                              '${e.targetSets} x ${e.exerciseName}',
+                              style: TextStyle(color: AppTheme.textColor.withOpacity(0.7), fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
                         ],
                       ),
@@ -336,9 +401,10 @@ class RoutineCard extends StatelessWidget {
                     if (routine.exercises.length > 3)
                       Text(
                         '+ ${routine.exercises.length - 3} más...',
-                        style: TextStyle(color: AppTheme.hintColor, fontSize: 12),
+                        style: const TextStyle(color: AppTheme.hintColor, fontSize: 12),
                       ),
                   ],
+
                   
                   const SizedBox(height: 20),
                   
