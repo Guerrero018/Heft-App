@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../data/routine_provider.dart';
 import '../../exercises/data/exercise_provider.dart';
 import '../../exercises/domain/exercise_model.dart';
+import '../../exercises/presentation/exercise_detail_screen.dart';
 
 class CreateRoutineScreen extends ConsumerStatefulWidget {
   const CreateRoutineScreen({super.key});
@@ -287,26 +288,26 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
 
   final List<Map<String, String>> _muscleGroups = [
     {'id': 'all', 'name': 'Todos'},
-    {'id': 'chest', 'name': 'Pecho'},
-    {'id': 'back', 'name': 'Espalda'},
-    {'id': 'shoulders', 'name': 'Hombros'},
-    {'id': 'quadriceps', 'name': 'Cuádriceps'},
+    {'id': 'pecho', 'name': 'Pecho'},
+    {'id': 'espalda', 'name': 'Espalda'},
+    {'id': 'hombros', 'name': 'Hombros'},
+    {'id': 'cuadriceps', 'name': 'Cuádriceps'},
     {'id': 'biceps', 'name': 'Bíceps'},
     {'id': 'triceps', 'name': 'Tríceps'},
-    {'id': 'abs', 'name': 'Abs'},
-    {'id': 'glutes', 'name': 'Glúteos'},
-    {'id': 'calves', 'name': 'Gemelos'},
-    {'id': 'hamstrings', 'name': 'Femoral'},
+    {'id': 'abdominales', 'name': 'Abs'},
+    {'id': 'gluteos', 'name': 'Glúteos'},
+    {'id': 'gemelos', 'name': 'Gemelos'},
+    {'id': 'isquiotibiales', 'name': 'Femoral'},
     {'id': 'cardio', 'name': 'Cardio'},
   ];
 
   final List<Map<String, String>> _equipmentTypes = [
     {'id': 'all', 'name': 'Cualquiera'},
-    {'id': 'barbell', 'name': 'Barra'},
-    {'id': 'dumbbell', 'name': 'Mancuernas'},
-    {'id': 'machine', 'name': 'Máquina'},
-    {'id': 'cable', 'name': 'Polea'},
-    {'id': 'bodyweight', 'name': 'Peso Corporal'},
+    {'id': 'barra', 'name': 'Barra'},
+    {'id': 'mancuernas', 'name': 'Mancuernas'},
+    {'id': 'maquina', 'name': 'Máquina'},
+    {'id': 'polea', 'name': 'Polea'},
+    {'id': 'peso_corporal', 'name': 'Peso Corporal'},
   ];
 
   @override
@@ -455,13 +456,28 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                e.exerciseType.replaceAll('_', ' ').toUpperCase(),
+                                (e.equipment ?? e.exerciseType).replaceAll('_', ' ').toUpperCase(),
                                 style: const TextStyle(color: AppTheme.hintColor, fontSize: 10),
                               ),
                             ],
                           ),
                         ),
-                        trailing: const Icon(Icons.add, color: Colors.white24),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.info_outline, color: Colors.white24, size: 20),
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => ExerciseDetailScreen(exercise: e),
+                                  ),
+                                );
+                              },
+                            ),
+                            const Icon(Icons.add, color: AppTheme.primaryColor, size: 20),
+                          ],
+                        ),
                         onTap: () => Navigator.of(context).pop(e),
                       );
                       },
