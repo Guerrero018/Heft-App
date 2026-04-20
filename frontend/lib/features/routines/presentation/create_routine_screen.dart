@@ -5,9 +5,12 @@ import '../data/routine_provider.dart';
 import '../../exercises/data/exercise_provider.dart';
 import '../../exercises/domain/exercise_model.dart';
 import '../../exercises/presentation/exercise_detail_screen.dart';
+import '../domain/routine_model.dart';
 
 class CreateRoutineScreen extends ConsumerStatefulWidget {
-  const CreateRoutineScreen({super.key});
+  final Routine? existingRoutine;
+  
+  const CreateRoutineScreen({super.key, this.existingRoutine});
 
   @override
   ConsumerState<CreateRoutineScreen> createState() => _CreateRoutineScreenState();
@@ -17,6 +20,29 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final List<SelectedExercise> _selectedExercises = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingRoutine != null) {
+      _nameController.text = widget.existingRoutine!.name;
+      _descriptionController.text = widget.existingRoutine!.description;
+      for (final e in widget.existingRoutine!.exercises) {
+        _selectedExercises.add(SelectedExercise(
+          exercise: Exercise(
+            id: e.exerciseId,
+            name: e.exerciseName,
+            muscleGroup: e.muscleGroup,
+            exerciseType: 'otro', // fallback field for filters
+            isGlobal: true, // not strictly used but required by model
+          ),
+          sets: e.targetSets,
+          reps: e.targetReps,
+          weight: e.targetWeight,
+        ));
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -71,22 +97,31 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
     }).toList();
 
     try {
-       await ref.read(routineProvider.notifier).createRoutineWithExercises(
-        name,
-        _descriptionController.text.trim(),
-        exercisesData,
-      );
+      if (widget.existingRoutine == null) {
+        await ref.read(routineProvider.notifier).createRoutineWithExercises(
+          name,
+          _descriptionController.text.trim(),
+          exercisesData,
+        );
+      } else {
+        await ref.read(routineProvider.notifier).updateRoutine(
+          widget.existingRoutine!.id!,
+          name,
+          _descriptionController.text.trim(),
+          exercisesData,
+        );
+      }
 
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Rutina creada con éxito')),
+          SnackBar(content: Text(widget.existingRoutine == null ? 'Rutina creada con éxito' : 'Rutina actualizada')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al crear rutina: $e')),
+          SnackBar(content: Text('Error al guardar la rutina: $e')),
         );
       }
     }
@@ -99,7 +134,8 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Nueva Rutina', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(widget.existingRoutine == null ? 'Nueva Rutina' : 'Editar Rutina', 
+          style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           TextButton(
             onPressed: _handleSave,

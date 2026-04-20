@@ -79,6 +79,32 @@ class RoutineNotifier extends Notifier<RoutineState> {
       rethrow;
     }
   }
+
+  Future<void> updateRoutine(int id, String name, String description, List<Map<String, dynamic>> exercises) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      await apiClient.put('routines/$id/', data: {
+        'name': name,
+        'description': description,
+        'exercises': exercises,
+      });
+      await fetchRoutines();
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'Failed to update routine: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteRoutine(int routineId) async {
+    try {
+      await apiClient.delete('routines/$routineId/');
+      // Actualizamos el estado localmente o volvemos a hacer fetch
+      await fetchRoutines();
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to delete routine: $e');
+      rethrow;
+    }
+  }
 }
 
 final routineProvider = NotifierProvider<RoutineNotifier, RoutineState>(() {
