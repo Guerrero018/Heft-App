@@ -8,58 +8,60 @@ class Exercise(models.Model):
     """
 
     EXERCISE_TYPES = [
-        ("barbell", "Barra"),
-        ("dumbbell", "Mancuernas"),
-        ("machine", "Máquina"),
-        ("cable", "Polea"),
-        ("bodyweight", "Peso Corporal"),
-        ("kettlebell", "Pesa Rusa"),
-        ("smith_machine", "Máquina Smith"),
-        ("other", "Otro"),
+        ("barra", "Barra"),
+        ("mancuernas", "Mancuernas"),
+        ("maquina", "Máquina"),
+        ("polea", "Polea"),
+        ("peso_corporal", "Peso Corporal"),
+        ("pesa_rusa", "Pesa Rusa"),
+        ("maquina_smith", "Máquina Smith"),
+        ("otro", "Otro"),
     ]
 
     MUSCLE_GROUPS = [
-        # Tronco Superior
-        ("chest", "Pecho"),
-        ("back", "Espalda"),
-        ("shoulders", "Hombros"),
-        ("traps", "Trapecios"),
-        # Piernas
-        ("quadriceps", "Cuádriceps"),
-        ("hamstrings", "Isquiotibiales"),
-        ("calves", "Gemelos"),
-        ("glutes", "Glúteos"),
-        ("adductors", "Aductores"),
-        ("abductors", "Abductores"),
-        # Brazos
+        ("pecho", "Pecho"),
+        ("espalda", "Espalda"),
+        ("hombros", "Hombros"),
+        ("trapecios", "Trapecios"),
+        ("cuadriceps", "Cuádriceps"),
+        ("isquiotibiales", "Isquiotibiales"),
+        ("gemelos", "Gemelos"),
+        ("gluteos", "Glúteos"),
+        ("aductores", "Aductores"),
+        ("abductores", "Abductores"),
         ("biceps", "Bíceps"),
         ("triceps", "Tríceps"),
-        ("forearms", "Antebrazos"),
-        # Core y Otros
-        ("abs", "Abdominales"),
-        ("lower_back", "Espalda Baja"),
+        ("antebrazos", "Antebrazos"),
+        ("abdominales", "Abdominales"),
+        ("espalda_baja", "Espalda Baja"),
         ("cardio", "Cardio"),
-        ("others", "Otros"),
+        ("otros", "Otros"),
     ]
 
+    external_id = models.CharField(max_length=20, blank=True, null=True, help_text="ID original de ExerciseDB")
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     instructions = models.JSONField(default=list, blank=True, help_text="Lista de pasos para realizar el ejercicio")
     muscle_group = models.CharField(max_length=50, choices=MUSCLE_GROUPS)
+    
+    # Campos enriquecidos de ExerciseDB
+    target = models.CharField(max_length=100, blank=True, null=True, help_text="Músculo objetivo específico")
+    secondary_muscles = models.JSONField(default=list, blank=True, help_text="Lista de otros músculos involucrados")
+    difficulty = models.CharField(max_length=50, blank=True, null=True)
+    category = models.CharField(max_length=100, blank=True, null=True)
+    
     equipment = models.CharField(
         max_length=100, blank=True, null=True
     )  # Ej: Barra, Mancuerna
     exercise_type = models.CharField(
-        max_length=20, choices=EXERCISE_TYPES, default="other"
+        max_length=20, choices=EXERCISE_TYPES, default="otro"
     )
     gif_url = models.URLField(blank=True, null=True)
 
-    # 3. Lógica de propiedad (Global vs Custom)
     is_global = models.BooleanField(
         default=False, help_text="True si es un ejercicio de la app"
     )
 
-    # Si is_global es False, este ejercicio pertenece a un usuario específico
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -69,7 +71,6 @@ class Exercise(models.Model):
     )
 
     class Meta:
-        # Evita que un usuario cree dos ejercicios con el mismo nombre exacto
         unique_together = ("name", "user")
 
     def __str__(self):
