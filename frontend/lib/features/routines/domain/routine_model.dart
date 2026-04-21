@@ -31,6 +31,8 @@ class RoutineExercise {
   final int exerciseId;
   final String exerciseName;
   final String muscleGroup;
+  final String? externalId;
+  final String? gifUrl;
   final int order;
   final int targetSets;
   final int targetReps;
@@ -41,6 +43,8 @@ class RoutineExercise {
     required this.exerciseId,
     required this.exerciseName,
     required this.muscleGroup,
+    this.externalId,
+    this.gifUrl,
     required this.order,
     required this.targetSets,
     required this.targetReps,
@@ -53,6 +57,8 @@ class RoutineExercise {
       exerciseId: json['exercise'],
       exerciseName: json['exercise_name'] ?? 'Ejercicio',
       muscleGroup: json['muscle_group'] ?? 'Desconocido',
+      externalId: json['external_id'],
+      gifUrl: json['gif_url'],
       order: json['order'] ?? 0,
       targetSets: json['target_sets'] ?? 0,
       targetReps: json['target_reps'] ?? 0,

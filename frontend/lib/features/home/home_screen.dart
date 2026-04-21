@@ -6,6 +6,7 @@ import '../profile/profile_screen.dart';
 import '../routines/data/routine_provider.dart';
 import '../routines/domain/routine_model.dart';
 import '../routines/presentation/create_routine_screen.dart';
+import '../exercises/presentation/exercise_catalog_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -83,18 +84,32 @@ class _InicioTab extends ConsumerWidget {
             children: [
               // Header con Saludo
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Hola de nuevo, ',
-                    style: TextStyle(color: AppTheme.hintColor, fontSize: 14),
+                  Row(
+                    children: [
+                      const Text(
+                        'Hola de nuevo, ',
+                        style: TextStyle(color: AppTheme.hintColor, fontSize: 14),
+                      ),
+                      Text(
+                        ref.watch(authProvider).user?['username'] ?? '',
+                        style: const TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    ref.watch(authProvider).user?['username'] ?? '',
-                    style: const TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const ExerciseCatalogScreen()),
+                      );
+                    },
+                    icon: Icon(Icons.fitness_center_rounded, color: AppTheme.hintColor.withOpacity(0.4), size: 20),
+                    tooltip: 'Biblioteca de ejercicios',
                   ),
                 ],
               ),
