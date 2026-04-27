@@ -10,7 +10,7 @@ class RoutineExerciseSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = RoutineExercise
-        fields = ['id', 'exercise', 'exercise_name', 'muscle_group', 'external_id', 'gif_url', 'order', 'target_sets', 'target_reps', 'target_weight']
+        fields = ['id', 'exercise', 'exercise_name', 'muscle_group', 'external_id', 'gif_url', 'order', 'target_sets', 'target_reps', 'target_weight', 'rest_time_seconds']
 
 class RoutineSerializer(serializers.ModelSerializer):
     exercises = RoutineExerciseSerializer(many=True, required=False)

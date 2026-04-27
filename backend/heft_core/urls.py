@@ -24,7 +24,13 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+from django.http import JsonResponse
+
+def health_check(request):
+    return JsonResponse({"status": "ok", "message": "Heft API is awake!"})
+
 urlpatterns = [
+    path('health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     # JWT Authentication
     path('api/auth/register/', users_views.RegisterView.as_view(), name='auth_register'),

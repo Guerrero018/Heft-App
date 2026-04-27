@@ -12,7 +12,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'username', 'email', 'height', 'weight', 'profile_picture', 'units_preference', 
             'birth_date', 'gender', 'experience_level', 'fitness_goal', 
-            'workout_days_per_week', 'workout_duration_minutes', 'is_onboarded'
+            'workout_days_per_week', 'workout_duration_minutes', 'is_onboarded', 'track_rpe'
         )
 
     def to_representation(self, instance):

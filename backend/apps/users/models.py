@@ -22,6 +22,7 @@ class User(AbstractUser):
     profile_picture = models.ImageField(upload_to="profile_pics", null=True, blank=True)
     
     is_onboarded = models.BooleanField(default=False)
+    track_rpe = models.BooleanField(default=False, help_text="User preference to track RPE")
 
     def __str__(self):
         return self.username
