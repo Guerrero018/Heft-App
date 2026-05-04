@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/auth_provider.dart';
+import '../../../routines/domain/routine_model.dart';
 import '../../domain/live_workout_provider.dart';
 import '../../domain/live_workout_state.dart';
+import '../../../exercises/presentation/exercise_catalog_screen.dart';
 
 class LiveWorkoutScreen extends ConsumerWidget {
   const LiveWorkoutScreen({super.key});
@@ -90,6 +92,26 @@ class LiveWorkoutScreen extends ConsumerWidget {
               },
             ),
             const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text(
+                'Campo RIR (Repes en Reserva)',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: const Text(
+                'Añade una casilla para anotar cuántas repeticiones te quedaban (0-5)',
+                style: TextStyle(color: AppTheme.hintColor),
+              ),
+              value: state.enableRir,
+              activeColor: AppTheme.primaryColor,
+              onChanged: (val) {
+                ref.read(liveWorkoutProvider.notifier).toggleRir(val);
+                Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -137,19 +159,26 @@ class LiveWorkoutScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(liveWorkoutProvider);
     final trackRpe = state.enableRpe;
+    final trackRir = state.enableRir;
 
     return WillPopScope(
       onWillPop: () async {
-        _confirmCancel(context, ref);
-        return false;
+        return true;
       },
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: AppTheme.surfaceColor,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
-            onPressed: () => _confirmCancel(context, ref),
+            icon: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.keyboard_arrow_down_rounded, size: 28),
+            ),
+            onPressed: () => Navigator.of(context).pop(),
           ),
           title: Column(
             children: [
@@ -174,25 +203,17 @@ class LiveWorkoutScreen extends ConsumerWidget {
           ),
           centerTitle: true,
           actions: [
+            // Solo Configuración arriba a la derecha
             IconButton(
-              icon: const Icon(
-                Icons.settings_outlined,
-                color: AppTheme.hintColor,
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.settings_outlined, color: AppTheme.hintColor, size: 20),
               ),
               onPressed: () => _showSettings(context, ref),
-            ),
-            TextButton(
-              onPressed: () async {
-                await ref.read(liveWorkoutProvider.notifier).finishWorkout();
-                if (context.mounted) Navigator.of(context).pop();
-              },
-              child: const Text(
-                'TERMINAR',
-                style: TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           ],
         ),
@@ -205,19 +226,108 @@ class LiveWorkoutScreen extends ConsumerWidget {
             else if (state.activeExercises.isEmpty)
               _buildEmptyState(context)
             else
-              ListView.builder(
-                padding: const EdgeInsets.only(bottom: 120, top: 16),
-                itemCount: state.activeExercises.length,
-                itemBuilder: (context, index) {
-                  return _ActiveExerciseCard(
-                    exerciseIndex: index,
-                    exercise: state.activeExercises[index],
-                    trackRpe: trackRpe,
-                  );
-                },
+              ListView(
+                padding: const EdgeInsets.only(bottom: 60, top: 16),
+                children: [
+                  ...state.activeExercises.asMap().entries.map((entry) {
+                    return _ActiveExerciseCard(
+                      exerciseIndex: entry.key,
+                      exercise: entry.value,
+                      trackRpe: trackRpe,
+                      trackRir: trackRir,
+                    );
+                  }).toList(),
+
+                  const SizedBox(height: 16),
+
+                  // Botón Añadir Ejercicio (Al final de la lista)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final newExercise = await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const ExerciseCatalogScreen(isSelectionMode: true),
+                          ),
+                        );
+
+                        if (newExercise != null) {
+                          final routineEx = RoutineExercise(
+                            id: 0, // Temp ID
+                            exerciseId: newExercise.id,
+                            exerciseName: newExercise.name,
+                            muscleGroup: newExercise.muscleGroup,
+                            externalId: newExercise.externalId,
+                            gifUrl: newExercise.gifUrl,
+                            order: state.activeExercises.length,
+                            targetSets: 3, // Default values
+                            targetReps: 10,
+                            targetWeight: 0,
+                          );
+                          ref.read(liveWorkoutProvider.notifier).addExercise(routineEx);
+                        }
+                      },
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('AÑADIR EJERCICIO'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primaryColor,
+                        side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Botones de Acción (Finalizar y Descartar)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        // Descartar (Más pequeño)
+                        SizedBox(
+                          width: 45,
+                          height: 45,
+                          child: IconButton(
+                            onPressed: () => _confirmCancel(context, ref),
+                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                            padding: EdgeInsets.zero,
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.redAccent.withOpacity(0.1),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Finalizar (Prominente)
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await ref.read(liveWorkoutProvider.notifier).finishWorkout();
+                              if (context.mounted) Navigator.of(context).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text(
+                              'FINALIZAR ENTRENAMIENTO',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 48),
+                ],
               ),
 
-            // Rest Timer Panel
+            // Rest Timer Panel (Vuelve a estar abajo fijo si se activa)
             if (state.isResting)
               Positioned(
                 bottom: 0,
@@ -227,20 +337,6 @@ class LiveWorkoutScreen extends ConsumerWidget {
               ),
           ],
         ),
-        floatingActionButton: state.isResting
-            ? null
-            : FloatingActionButton.extended(
-                onPressed: () {
-                  // TODO: Open dialog to add more exercises dynamically
-                },
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.black,
-                icon: const Icon(Icons.add),
-                label: const Text(
-                  'Añadir Ejercicio',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
       ),
     );
   }
@@ -279,12 +375,103 @@ class _ActiveExerciseCard extends ConsumerWidget {
   final int exerciseIndex;
   final ActiveExercise exercise;
   final bool trackRpe;
+  final bool trackRir;
 
   const _ActiveExerciseCard({
     required this.exerciseIndex,
     required this.exercise,
     required this.trackRpe,
+    required this.trackRir,
   });
+
+  void _confirmDeleteExercise(BuildContext context, WidgetRef ref, int index) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        title: const Text('Eliminar Ejercicio', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          '¿Estás seguro de que quieres eliminar este ejercicio de la sesión actual?',
+          style: TextStyle(color: AppTheme.hintColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar', style: TextStyle(color: AppTheme.primaryColor)),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(liveWorkoutProvider.notifier).removeExercise(index);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReorderDialog(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surfaceColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final exercises = ref.watch(liveWorkoutProvider).activeExercises;
+            return Container(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'REORDENAR EJERCICIOS',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Mantén pulsado y arrastra para reordenar',
+                    style: TextStyle(color: AppTheme.hintColor, fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
+                    child: ReorderableListView(
+                      shrinkWrap: true,
+                      onReorder: (oldIndex, newIndex) {
+                        ref.read(liveWorkoutProvider.notifier).reorderExercises(oldIndex, newIndex);
+                      },
+                      children: [
+                        for (int i = 0; i < exercises.length; i++)
+                          ListTile(
+                            key: ValueKey('reorder_$i'),
+                            leading: const Icon(Icons.drag_indicator, color: AppTheme.hintColor),
+                            title: Text(exercises[i].routineExercise.exerciseName),
+                            trailing: Text('${i + 1}º', style: const TextStyle(color: AppTheme.primaryColor)),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                      child: const Text('LISTO'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -312,9 +499,71 @@ class _ActiveExerciseCard extends ConsumerWidget {
                   ),
                 ),
               ),
-              IconButton(
+              PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: AppTheme.hintColor),
-                onPressed: () {},
+                color: AppTheme.cardColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onSelected: (value) async {
+                  if (value == 'delete') {
+                    _confirmDeleteExercise(context, ref, exerciseIndex);
+                  } else if (value == 'replace') {
+                    final newExercise = await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ExerciseCatalogScreen(isSelectionMode: true),
+                      ),
+                    );
+                    if (newExercise != null) {
+                      final routineEx = RoutineExercise(
+                        id: 0, // Temp ID
+                        exerciseId: newExercise.id,
+                        exerciseName: newExercise.name,
+                        muscleGroup: newExercise.muscleGroup,
+                        externalId: newExercise.externalId,
+                        gifUrl: newExercise.gifUrl,
+                        order: exercise.routineExercise.order,
+                        targetSets: exercise.sets.length,
+                        targetReps: exercise.sets.first.reps,
+                        targetWeight: exercise.sets.first.weight,
+                      );
+                      ref.read(liveWorkoutProvider.notifier).replaceExercise(exerciseIndex, routineEx);
+                    }
+                  } else if (value == 'reorder') {
+                    _showReorderDialog(context, ref);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'reorder',
+                    child: Row(
+                      children: [
+                        Icon(Icons.reorder, size: 20),
+                        SizedBox(width: 12),
+                        Text('Reordenar'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'replace',
+                    child: Row(
+                      children: [
+                        Icon(Icons.swap_horiz_rounded, size: 20),
+                        SizedBox(width: 12),
+                        Text('Reemplazar ejercicio'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                        SizedBox(width: 12),
+                        Text('Eliminar ejercicio', style: TextStyle(color: Colors.redAccent)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -322,74 +571,87 @@ class _ActiveExerciseCard extends ConsumerWidget {
 
           // Cabeceras de tabla
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 5),
             child: Row(
               children: [
                 const SizedBox(
-                  width: 35,
+                  width: 30,
                   child: Text(
                     'Set',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.hintColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                 ),
                 const SizedBox(
-                  width: 70,
+                  width: 60,
                   child: Text(
                     'Anterior',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.hintColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                 ),
                 const Spacer(),
                 const SizedBox(
-                  width: 55,
+                  width: 50,
                   child: Text(
                     'kg',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.hintColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                 ),
                 const SizedBox(
-                  width: 55,
+                  width: 50,
                   child: Text(
                     'Reps',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.hintColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                 ),
                 if (trackRpe)
                   const SizedBox(
-                    width: 55,
+                    width: 50,
                     child: Text(
                       'RPE',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppTheme.hintColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                if (trackRir)
+                  const SizedBox(
+                    width: 50,
+                    child: Text(
+                      'RIR',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppTheme.hintColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
                       ),
                     ),
                   ),
                 const SizedBox(
-                  width: 40,
-                  child: Icon(Icons.check, size: 18, color: AppTheme.hintColor),
+                  width: 35,
+                  child: Icon(Icons.check, size: 16, color: AppTheme.hintColor),
                 ),
               ],
             ),
@@ -403,6 +665,7 @@ class _ActiveExerciseCard extends ConsumerWidget {
               setIndex: i,
               setData: exercise.sets[i],
               trackRpe: trackRpe,
+              trackRir: trackRir,
             ),
 
           const SizedBox(height: 16),
@@ -449,12 +712,14 @@ class _SetRow extends ConsumerWidget {
   final int setIndex;
   final WorkoutSetData setData;
   final bool trackRpe;
+  final bool trackRir;
 
   const _SetRow({
     required this.exerciseIndex,
     required this.setIndex,
     required this.setData,
     required this.trackRpe,
+    required this.trackRir,
   });
 
   @override
@@ -470,12 +735,12 @@ class _SetRow extends ConsumerWidget {
         color: rowColor,
         borderRadius: BorderRadius.circular(8),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 5),
       child: Row(
         children: [
           // Type & Number
           SizedBox(
-            width: 35,
+            width: 30,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 4),
               decoration: BoxDecoration(
@@ -489,7 +754,7 @@ class _SetRow extends ConsumerWidget {
                   _getTypeLetter(setData.type, setIndex + 1),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                    fontSize: 11,
                     color: isCompleted
                         ? Colors.black
                         : _getTypeColor(setData.type),
@@ -501,7 +766,7 @@ class _SetRow extends ConsumerWidget {
 
           // Previous Value
           SizedBox(
-            width: 70,
+            width: 60,
             child: Center(
               child: Text(
                 setData.prevWeight != null
@@ -509,7 +774,7 @@ class _SetRow extends ConsumerWidget {
                     : '-',
                 style: TextStyle(
                   color: isCompleted ? AppTheme.primaryColor.withOpacity(0.6) : AppTheme.hintColor, 
-                  fontSize: 11
+                  fontSize: 10
                 ),
               ),
             ),
@@ -519,7 +784,7 @@ class _SetRow extends ConsumerWidget {
 
           // Weight Input
           SizedBox(
-            width: 55,
+            width: 50,
             child: _buildInput(
               value: setData.wasModifiedWeight
                   ? setData.weight.toString().replaceAll(RegExp(r'\.0$'), '')
@@ -550,7 +815,7 @@ class _SetRow extends ConsumerWidget {
 
           // Reps Input
           SizedBox(
-            width: 55,
+            width: 50,
             child: _buildInput(
               value: setData.wasModifiedReps ? setData.reps.toString() : '',
               hint: setData.prevReps != null
@@ -572,7 +837,7 @@ class _SetRow extends ConsumerWidget {
           // RPE Input
           if (trackRpe)
             SizedBox(
-              width: 55,
+              width: 50,
               child: _buildInput(
                 value: setData.wasModifiedRpe ? (setData.rpe?.toString() ?? '') : '',
                 hint: '-',
@@ -587,16 +852,34 @@ class _SetRow extends ConsumerWidget {
               ),
             ),
 
+          // RIR Input
+          if (trackRir)
+            SizedBox(
+              width: 50,
+              child: _buildInput(
+                value: setData.wasModifiedRir ? (setData.rir?.toString() ?? '') : '',
+                hint: '-',
+                isCompleted: isCompleted,
+                isModified: setData.wasModifiedRir,
+                onChanged: (val) {
+                  final rir = int.tryParse(val);
+                  ref
+                      .read(liveWorkoutProvider.notifier)
+                      .updateSet(exerciseIndex, setData.id, rir: rir);
+                },
+              ),
+            ),
+
           // Complete Toggle
           SizedBox(
-            width: 40,
+            width: 35,
             child: IconButton(
               icon: Icon(
                 Icons.check_circle,
                 color: isCompleted
                     ? AppTheme.primaryColor
                     : AppTheme.hintColor.withOpacity(0.3),
-                size: 24,
+                size: 20,
               ),
               onPressed: () {
                 ref

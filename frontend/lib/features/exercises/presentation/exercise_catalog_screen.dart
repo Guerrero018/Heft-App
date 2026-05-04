@@ -6,7 +6,8 @@ import 'exercise_detail_screen.dart';
 import 'create_exercise_screen.dart';
 
 class ExerciseCatalogScreen extends ConsumerStatefulWidget {
-  const ExerciseCatalogScreen({super.key});
+  final bool isSelectionMode;
+  const ExerciseCatalogScreen({super.key, this.isSelectionMode = false});
 
   @override
   ConsumerState<ExerciseCatalogScreen> createState() => _ExerciseCatalogScreenState();
@@ -204,14 +205,18 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                       ),
                       trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white10, size: 16),
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => ExerciseDetailScreen(
-                              exercise: e,
-                              showAddButton: false,
+                        if (widget.isSelectionMode) {
+                          Navigator.of(context).pop(e);
+                        } else {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => ExerciseDetailScreen(
+                                exercise: e,
+                                showAddButton: false,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        }
                       },
                     );
                   },
