@@ -23,5 +23,7 @@ class WorkoutSet(models.Model):
     set_number = models.IntegerField()
     weight = models.FloatField()
     reps = models.IntegerField()
+    set_type = models.CharField(max_length=20, default='normal')
+    rpe = models.IntegerField(null=True, blank=True)
     is_completed = models.BooleanField(default=False)
     

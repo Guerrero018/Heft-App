@@ -17,4 +17,5 @@ class RoutineExercise(models.Model):
     target_sets = models.IntegerField()
     target_reps = models.IntegerField()
     target_weight = models.FloatField()
+    rest_time_seconds = models.IntegerField(default=60)
     
