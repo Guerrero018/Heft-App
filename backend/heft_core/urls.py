@@ -27,7 +27,7 @@ from rest_framework_simplejwt.views import (
 from django.http import JsonResponse
 
 def health_check(request):
-    return JsonResponse({"status": "ok", "message": "Heft API is awake!"})
+    return JsonResponse({"status": "ok", "message": "Heft API is awake!", "version": "1.0.1"})
 
 urlpatterns = [
     path('health/', health_check, name='health_check'),
