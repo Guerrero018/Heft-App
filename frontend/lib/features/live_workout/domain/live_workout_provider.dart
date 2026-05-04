@@ -178,6 +178,8 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
           wasModifiedWeight: weight != null ? true : set.wasModifiedWeight,
           wasModifiedReps: reps != null ? true : set.wasModifiedReps,
           wasModifiedRpe: rpe != null ? true : set.wasModifiedRpe,
+          // Auto-complete if rest timer is disabled and reps were provided
+          isCompleted: (!state.enableRestTimer && reps != null) ? true : set.isCompleted,
         );
       }
       return set;
@@ -247,12 +249,16 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     }
   }
 
-  void setRestTimerEnabled(bool enabled) {
+  void toggleRestTimer(bool enabled) {
     state = state.copyWith(enableRestTimer: enabled);
     // If we are currently resting and disable the timer, stop it
     if (!enabled && state.isResting) {
       stopRestTimer();
     }
+  }
+
+  void toggleRpe(bool enabled) {
+    state = state.copyWith(enableRpe: enabled);
   }
 
   void _startRestTimer(int seconds) {
@@ -294,20 +300,22 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     final savedState = state; // Keep a copy for the API call
     state = state.copyWith(isActive: false, isLoading: true); // Show loading while saving
 
-    // Prepare the sets data
+    // Prepare the sets data (ONLY completed sets)
     final List<Map<String, dynamic>> sets = [];
     for (var activeExercise in savedState.activeExercises) {
       for (int i = 0; i < activeExercise.sets.length; i++) {
         final setData = activeExercise.sets[i];
-        sets.add({
-          'exercise': activeExercise.routineExercise.exerciseId,
-          'set_number': i + 1,
-          'set_type': setData.type,
-          'weight': setData.weight,
-          'reps': setData.reps,
-          'rpe': setData.rpe?.round(),
-          'is_completed': setData.isCompleted,
-        });
+        if (setData.isCompleted) {
+          sets.add({
+            'exercise': activeExercise.routineExercise.exerciseId,
+            'set_number': sets.length + 1, // Re-index to be sequential
+            'set_type': setData.type,
+            'weight': setData.weight,
+            'reps': setData.reps,
+            'rpe': setData.rpe?.round(),
+            'is_completed': true,
+          });
+        }
       }
     }
 

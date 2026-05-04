@@ -95,6 +95,7 @@ class LiveWorkoutState {
 
   // Settings
   final bool enableRestTimer;
+  final bool enableRpe;
   final bool isLoading;
 
   LiveWorkoutState({
@@ -106,7 +107,8 @@ class LiveWorkoutState {
     this.activeExercises = const [],
     this.isResting = false,
     this.restSecondsRemaining = 0,
-    this.enableRestTimer = true,
+    this.enableRestTimer = false,
+    this.enableRpe = false,
     this.isLoading = false,
   });
 
@@ -120,6 +122,7 @@ class LiveWorkoutState {
     bool? isResting,
     int? restSecondsRemaining,
     bool? enableRestTimer,
+    bool? enableRpe,
     bool? isLoading,
   }) {
     return LiveWorkoutState(
@@ -132,6 +135,7 @@ class LiveWorkoutState {
       isResting: isResting ?? this.isResting,
       restSecondsRemaining: restSecondsRemaining ?? this.restSecondsRemaining,
       enableRestTimer: enableRestTimer ?? this.enableRestTimer,
+      enableRpe: enableRpe ?? this.enableRpe,
       isLoading: isLoading ?? this.isLoading,
     );
   }
