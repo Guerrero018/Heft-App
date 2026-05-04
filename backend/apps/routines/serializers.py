@@ -21,10 +21,13 @@ class RoutineSerializer(serializers.ModelSerializer):
         read_only_fields = ('user', 'created_at', 'updated_at')
 
     def create(self, validated_data):
-        exercises_data = validated_data.pop('exercises', [])
+        # Handle cases where exercises might be None or absent
+        exercises_data = validated_data.pop('exercises', []) or []
         
         if 'request' in self.context and self.context['request'].user.is_authenticated:
             validated_data['user'] = self.context['request'].user
+        else:
+            raise serializers.ValidationError("Debe estar autenticado para crear una rutina.")
             
         routine = Routine.objects.create(**validated_data)
         
