@@ -10,6 +10,7 @@ import '../routines/presentation/create_routine_screen.dart';
 import '../exercises/presentation/exercise_catalog_screen.dart';
 import '../live_workout/domain/live_workout_provider.dart';
 import '../live_workout/presentation/screens/live_workout_screen.dart';
+import '../statistics/presentation/statistics_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -23,7 +24,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   final List<Widget> _pages = const [
     _InicioTab(),
-    _EstadisticasTab(),
+    StatisticsScreen(),
     ProfileScreen(),
   ];
 
@@ -481,21 +482,6 @@ class RoutineCard extends ConsumerWidget {
     return translations[muscle.toLowerCase()] ?? muscle;
   }
 }
-
-class _EstadisticasTab extends StatelessWidget {
-  const _EstadisticasTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Estadísticas',
-        style: TextStyle(color: AppTheme.textColor, fontSize: 24),
-      ),
-    );
-  }
-}
-
 
 class _MinimizedWorkoutBar extends ConsumerWidget {
   const _MinimizedWorkoutBar();
