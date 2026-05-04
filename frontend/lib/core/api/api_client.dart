@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'constants.dart';
 
@@ -40,3 +41,5 @@ class ApiClient {
 
 // Global instance to use throughout the app temporarily
 final apiClient = ApiClient().client;
+
+final apiClientProvider = Provider<Dio>((ref) => apiClient);

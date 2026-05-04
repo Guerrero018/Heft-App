@@ -12,8 +12,88 @@ class LiveWorkoutScreen extends ConsumerWidget {
     final h = seconds ~/ 3600;
     final m = (seconds % 3600) ~/ 60;
     final s = seconds % 60;
-    if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    if (h > 0)
+      return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  void _showSettings(BuildContext context, WidgetRef ref) {
+    final state = ref.read(liveWorkoutProvider);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Configuraciones de Sesión',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppTheme.hintColor),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SwitchListTile(
+              title: const Text(
+                'Temporizador de Descanso',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: const Text(
+                'Inicia automáticamente el descanso al completar una serie',
+                style: TextStyle(color: AppTheme.hintColor),
+              ),
+              value: state.enableRestTimer,
+              activeColor: AppTheme.primaryColor,
+              onChanged: (val) {
+                ref.read(liveWorkoutProvider.notifier).toggleRestTimer(val);
+                Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text(
+                'Campo RPE (Esfuerzo)',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: const Text(
+                'Añade una casilla para anotar el esfuerzo percibido (1-10)',
+                style: TextStyle(color: AppTheme.hintColor),
+              ),
+              value: state.enableRpe,
+              activeColor: AppTheme.primaryColor,
+              onChanged: (val) {
+                ref.read(liveWorkoutProvider.notifier).toggleRpe(val);
+                Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 
   void _confirmCancel(BuildContext context, WidgetRef ref) {
@@ -21,13 +101,21 @@ class LiveWorkoutScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surfaceColor,
-        title: const Text('Cancelar Entrenamiento', style: TextStyle(color: Colors.white)),
-        content: const Text('¿Estás seguro? Se perderá todo el progreso de la sesión actual.',
-            style: TextStyle(color: AppTheme.hintColor)),
+        title: const Text(
+          'Cancelar Entrenamiento',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          '¿Estás seguro? Se perderá todo el progreso de la sesión actual.',
+          style: TextStyle(color: AppTheme.hintColor),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Seguir Entrenando', style: TextStyle(color: AppTheme.primaryColor)),
+            child: const Text(
+              'Seguir Entrenando',
+              style: TextStyle(color: AppTheme.primaryColor),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -35,7 +123,10 @@ class LiveWorkoutScreen extends ConsumerWidget {
               ref.read(liveWorkoutProvider.notifier).cancelWorkout();
               Navigator.of(context).pop();
             },
-            child: const Text('Cancelar', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -45,8 +136,7 @@ class LiveWorkoutScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(liveWorkoutProvider);
-    final user = ref.watch(authProvider).user;
-    final trackRpe = user != null && user['track_rpe'] == true;
+    final trackRpe = state.enableRpe;
 
     return WillPopScope(
       onWillPop: () async {
@@ -65,7 +155,10 @@ class LiveWorkoutScreen extends ConsumerWidget {
             children: [
               Text(
                 state.sessionName,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
@@ -81,18 +174,35 @@ class LiveWorkoutScreen extends ConsumerWidget {
           ),
           centerTitle: true,
           actions: [
+            IconButton(
+              icon: const Icon(
+                Icons.settings_outlined,
+                color: AppTheme.hintColor,
+              ),
+              onPressed: () => _showSettings(context, ref),
+            ),
             TextButton(
-              onPressed: () {
-                ref.read(liveWorkoutProvider.notifier).finishWorkout();
-                Navigator.of(context).pop();
+              onPressed: () async {
+                await ref.read(liveWorkoutProvider.notifier).finishWorkout();
+                if (context.mounted) Navigator.of(context).pop();
               },
-              child: const Text('TERMINAR', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'TERMINAR',
+                style: TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
         body: Stack(
           children: [
-            if (state.activeExercises.isEmpty)
+            if (state.isLoading)
+              const Center(
+                child: CircularProgressIndicator(color: AppTheme.primaryColor),
+              )
+            else if (state.activeExercises.isEmpty)
               _buildEmptyState(context)
             else
               ListView.builder(
@@ -107,7 +217,7 @@ class LiveWorkoutScreen extends ConsumerWidget {
                 },
               ),
 
-             // Rest Timer Panel
+            // Rest Timer Panel
             if (state.isResting)
               Positioned(
                 bottom: 0,
@@ -117,15 +227,20 @@ class LiveWorkoutScreen extends ConsumerWidget {
               ),
           ],
         ),
-        floatingActionButton: state.isResting ? null : FloatingActionButton.extended(
-          onPressed: () {
-            // TODO: Open dialog to add more exercises dynamically
-          },
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.black,
-          icon: const Icon(Icons.add),
-          label: const Text('Añadir Ejercicio', style: TextStyle(fontWeight: FontWeight.bold)),
-        ),
+        floatingActionButton: state.isResting
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: () {
+                  // TODO: Open dialog to add more exercises dynamically
+                },
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.black,
+                icon: const Icon(Icons.add),
+                label: const Text(
+                  'Añadir Ejercicio',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
       ),
     );
   }
@@ -135,11 +250,19 @@ class LiveWorkoutScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.fitness_center, size: 64, color: AppTheme.hintColor.withOpacity(0.3)),
+          Icon(
+            Icons.fitness_center,
+            size: 64,
+            color: AppTheme.hintColor.withOpacity(0.3),
+          ),
           const SizedBox(height: 16),
           const Text(
             'Entrenamiento Vacío',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textColor),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textColor,
+            ),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -196,18 +319,80 @@ class _ActiveExerciseCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Cabeceras de tabla
-          Row(
-            children: [
-              const SizedBox(width: 40, child: Text('Set', style: TextStyle(color: AppTheme.hintColor, fontWeight: FontWeight.bold))),
-              const Spacer(),
-              const SizedBox(width: 60, child: Text('kg', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.hintColor, fontWeight: FontWeight.bold))),
-              const SizedBox(width: 60, child: Text('Reps', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.hintColor, fontWeight: FontWeight.bold))),
-              if (trackRpe)
-                const SizedBox(width: 60, child: Text('RPE', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.hintColor, fontWeight: FontWeight.bold))),
-              const SizedBox(width: 50, child: Icon(Icons.check, size: 20, color: AppTheme.hintColor)),
-            ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 35,
+                  child: Text(
+                    'Set',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppTheme.hintColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  width: 70,
+                  child: Text(
+                    'Anterior',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppTheme.hintColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                const SizedBox(
+                  width: 55,
+                  child: Text(
+                    'kg',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppTheme.hintColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  width: 55,
+                  child: Text(
+                    'Reps',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppTheme.hintColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                if (trackRpe)
+                  const SizedBox(
+                    width: 55,
+                    child: Text(
+                      'RPE',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppTheme.hintColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                const SizedBox(
+                  width: 40,
+                  child: Icon(Icons.check, size: 18, color: AppTheme.hintColor),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
 
@@ -221,17 +406,38 @@ class _ActiveExerciseCard extends ConsumerWidget {
             ),
 
           const SizedBox(height: 16),
-          
-          // Botón Añadir Serie
-          Center(
-            child: TextButton.icon(
-              onPressed: () {
-                ref.read(liveWorkoutProvider.notifier).addSet(exerciseIndex);
-              },
-              icon: const Icon(Icons.add, color: AppTheme.hintColor),
-              label: const Text('Añadir Serie', style: TextStyle(color: AppTheme.hintColor)),
-            ),
-          )
+
+          // Botones Serie
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  ref.read(liveWorkoutProvider.notifier).addSet(exerciseIndex);
+                },
+                icon: const Icon(Icons.add, color: AppTheme.hintColor),
+                label: const Text(
+                  'Añadir Serie',
+                  style: TextStyle(color: AppTheme.hintColor),
+                ),
+              ),
+              if (exercise.sets.length > 1) ...[
+                const SizedBox(width: 16),
+                TextButton.icon(
+                  onPressed: () {
+                    ref
+                        .read(liveWorkoutProvider.notifier)
+                        .removeLastSet(exerciseIndex);
+                  },
+                  icon: const Icon(Icons.remove, color: Colors.redAccent),
+                  label: const Text(
+                    'Quitar Serie',
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
@@ -254,20 +460,28 @@ class _SetRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isCompleted = setData.isCompleted;
-    final rowColor = isCompleted ? AppTheme.primaryColor.withOpacity(0.1) : Colors.transparent;
+    final rowColor = isCompleted
+        ? AppTheme.primaryColor.withOpacity(0.12)
+        : Colors.transparent;
 
     return Container(
-      color: rowColor,
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      decoration: BoxDecoration(
+        color: rowColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
       child: Row(
         children: [
           // Type & Number
           SizedBox(
-            width: 40,
+            width: 35,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 4),
               decoration: BoxDecoration(
-                color: _getTypeColor(setData.type).withOpacity(isCompleted ? 1 : 0.2),
+                color: _getTypeColor(
+                  setData.type,
+                ).withOpacity(isCompleted ? 1 : 0.2),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Center(
@@ -275,39 +489,81 @@ class _SetRow extends ConsumerWidget {
                   _getTypeLetter(setData.type, setIndex + 1),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isCompleted ? Colors.black : _getTypeColor(setData.type),
+                    fontSize: 12,
+                    color: isCompleted
+                        ? Colors.black
+                        : _getTypeColor(setData.type),
                   ),
                 ),
               ),
             ),
           ),
+
+          // Previous Value
+          SizedBox(
+            width: 70,
+            child: Center(
+              child: Text(
+                setData.prevWeight != null
+                    ? '${setData.prevWeight.toString().replaceAll(RegExp(r'\.0$'), '')}k x ${setData.prevReps}'
+                    : '-',
+                style: TextStyle(
+                  color: isCompleted ? AppTheme.primaryColor.withOpacity(0.6) : AppTheme.hintColor, 
+                  fontSize: 11
+                ),
+              ),
+            ),
+          ),
+
           const Spacer(),
-          
+
           // Weight Input
           SizedBox(
-            width: 60,
+            width: 55,
             child: _buildInput(
-              value: setData.weight == 0 ? '' : setData.weight.toString().replaceAll(RegExp(r'\.0$'), ''),
+              value: setData.wasModifiedWeight
+                  ? setData.weight.toString().replaceAll(RegExp(r'\.0$'), '')
+                  : '',
+              hint: setData.prevWeight != null
+                  ? setData.prevWeight.toString().replaceAll(
+                      RegExp(r'\.0$'),
+                      '',
+                    )
+                  : (setData.weight > 0
+                        ? setData.weight.toString().replaceAll(
+                            RegExp(r'\.0$'),
+                            '',
+                          )
+                        : '0'),
               isCompleted: isCompleted,
+              isModified: setData.wasModifiedWeight,
               onChanged: (val) {
                 final weight = double.tryParse(val);
                 if (weight != null) {
-                  ref.read(liveWorkoutProvider.notifier).updateSet(exerciseIndex, setData.id, weight: weight);
+                  ref
+                      .read(liveWorkoutProvider.notifier)
+                      .updateSet(exerciseIndex, setData.id, weight: weight);
                 }
               },
             ),
           ),
-          
+
           // Reps Input
           SizedBox(
-            width: 60,
+            width: 55,
             child: _buildInput(
-              value: setData.reps == 0 ? '' : setData.reps.toString(),
+              value: setData.wasModifiedReps ? setData.reps.toString() : '',
+              hint: setData.prevReps != null
+                  ? setData.prevReps.toString()
+                  : (setData.reps > 0 ? setData.reps.toString() : '0'),
               isCompleted: isCompleted,
+              isModified: setData.wasModifiedReps,
               onChanged: (val) {
                 final reps = int.tryParse(val);
                 if (reps != null) {
-                  ref.read(liveWorkoutProvider.notifier).updateSet(exerciseIndex, setData.id, reps: reps);
+                  ref
+                      .read(liveWorkoutProvider.notifier)
+                      .updateSet(exerciseIndex, setData.id, reps: reps);
                 }
               },
             ),
@@ -316,29 +572,36 @@ class _SetRow extends ConsumerWidget {
           // RPE Input
           if (trackRpe)
             SizedBox(
-              width: 60,
+              width: 55,
               child: _buildInput(
-                value: setData.rpe?.toString() ?? '',
-                 hint: '-',
+                value: setData.wasModifiedRpe ? (setData.rpe?.toString() ?? '') : '',
+                hint: '-',
                 isCompleted: isCompleted,
+                isModified: setData.wasModifiedRpe,
                 onChanged: (val) {
                   final rpe = double.tryParse(val);
-                  ref.read(liveWorkoutProvider.notifier).updateSet(exerciseIndex, setData.id, rpe: rpe);
+                  ref
+                      .read(liveWorkoutProvider.notifier)
+                      .updateSet(exerciseIndex, setData.id, rpe: rpe);
                 },
               ),
             ),
 
           // Complete Toggle
           SizedBox(
-            width: 50,
+            width: 40,
             child: IconButton(
               icon: Icon(
                 Icons.check_circle,
-                color: isCompleted ? AppTheme.primaryColor : AppTheme.hintColor.withOpacity(0.3),
-                size: 28,
+                color: isCompleted
+                    ? AppTheme.primaryColor
+                    : AppTheme.hintColor.withOpacity(0.3),
+                size: 24,
               ),
               onPressed: () {
-                ref.read(liveWorkoutProvider.notifier).toggleSetComplete(exerciseIndex, setData.id);
+                ref
+                    .read(liveWorkoutProvider.notifier)
+                    .toggleSetComplete(exerciseIndex, setData.id);
               },
             ),
           ),
@@ -347,11 +610,28 @@ class _SetRow extends ConsumerWidget {
     );
   }
 
-  Widget _buildInput({required String value, String hint = '0', required bool isCompleted, required Function(String) onChanged}) {
+  Widget _buildInput({
+    required String value,
+    String hint = '0',
+    required bool isCompleted,
+    bool isModified = true,
+    required Function(String) onChanged,
+  }) {
+    Color textColor;
+    if (isCompleted) {
+      textColor = AppTheme.primaryColor;
+    } else if (isModified) {
+      textColor = AppTheme.textColor; // White
+    } else {
+      textColor = AppTheme.hintColor; // Gray
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color: isCompleted ? Colors.transparent : Colors.white.withOpacity(0.05),
+        color: isCompleted
+            ? Colors.transparent
+            : Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextFormField(
@@ -359,13 +639,19 @@ class _SetRow extends ConsumerWidget {
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: isCompleted ? AppTheme.primaryColor : AppTheme.textColor,
-          fontWeight: isCompleted ? FontWeight.bold : FontWeight.normal,
+          color: textColor,
+          fontWeight: isCompleted || isModified
+              ? FontWeight.bold
+              : FontWeight.normal,
         ),
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: hint,
-          hintStyle: TextStyle(color: AppTheme.hintColor.withOpacity(0.5)),
+          hintStyle: TextStyle(
+            color: AppTheme.hintColor.withOpacity(0.3),
+            fontWeight: FontWeight.normal,
+          ),
+          isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
         onChanged: onChanged,
@@ -375,19 +661,27 @@ class _SetRow extends ConsumerWidget {
 
   String _getTypeLetter(String type, int index) {
     switch (type) {
-      case 'warmup': return 'W';
-      case 'dropset': return 'D';
-      case 'failure': return 'F';
-      default: return '$index';
+      case 'warmup':
+        return 'W';
+      case 'dropset':
+        return 'D';
+      case 'failure':
+        return 'F';
+      default:
+        return '$index';
     }
   }
 
   Color _getTypeColor(String type) {
     switch (type) {
-      case 'warmup': return Colors.orange;
-      case 'dropset': return Colors.blue;
-      case 'failure': return Colors.red;
-      default: return AppTheme.hintColor;
+      case 'warmup':
+        return Colors.orange;
+      case 'dropset':
+        return Colors.blue;
+      case 'failure':
+        return Colors.red;
+      default:
+        return AppTheme.hintColor;
     }
   }
 }
@@ -409,13 +703,16 @@ class _RestTimerPanel extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
-        borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
         boxShadow: [
           BoxShadow(
             color: AppTheme.primaryColor.withOpacity(0.2),
             blurRadius: 20,
             offset: const Offset(0, -5),
-          )
+          ),
         ],
       ),
       child: SafeArea(
@@ -435,17 +732,20 @@ class _RestTimerPanel extends ConsumerWidget {
             ),
             const Spacer(),
             TextButton(
-              onPressed: () => ref.read(liveWorkoutProvider.notifier).adjustRestTimer(-10),
+              onPressed: () =>
+                  ref.read(liveWorkoutProvider.notifier).adjustRestTimer(-10),
               style: TextButton.styleFrom(foregroundColor: Colors.black54),
               child: const Text('-10s'),
             ),
             TextButton(
-              onPressed: () => ref.read(liveWorkoutProvider.notifier).adjustRestTimer(30),
+              onPressed: () =>
+                  ref.read(liveWorkoutProvider.notifier).adjustRestTimer(30),
               style: TextButton.styleFrom(foregroundColor: Colors.black54),
               child: const Text('+30s'),
             ),
             IconButton(
-              onPressed: () => ref.read(liveWorkoutProvider.notifier).stopRestTimer(),
+              onPressed: () =>
+                  ref.read(liveWorkoutProvider.notifier).stopRestTimer(),
               icon: const Icon(Icons.close, color: Colors.black),
             ),
           ],

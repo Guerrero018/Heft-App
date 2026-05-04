@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../routines/domain/routine_model.dart';
+import '../../../core/api/api_client.dart';
 import 'live_workout_state.dart';
 
 final liveWorkoutProvider = NotifierProvider<LiveWorkoutNotifier, LiveWorkoutState>(() {
@@ -16,32 +18,82 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     return LiveWorkoutState();
   }
 
-  void startWorkout(Routine? routine, {String? sessionName}) {
-    if (state.isActive) return;
+  Dio get _api => ref.read(apiClientProvider);
+
+  Future<void> startWorkout(Routine? routine, {String? sessionName}) async {
+    if (state.isActive || state.isLoading) return;
+
+    // Set loading state immediately
+    state = state.copyWith(
+      isActive: true, 
+      isLoading: true,
+      routine: routine,
+      sessionName: sessionName ?? (routine != null ? routine.name : 'Entrenamiento Rápido'),
+    );
 
     List<ActiveExercise> activeExercises = [];
     
     if (routine != null) {
+      // Fetch previous session for this routine to get "ghost" values
+      Map<int, List<Map<String, dynamic>>> previousData = {};
+      try {
+        final response = await _api.get(
+          'workouts/',
+          queryParameters: {
+            'routine': routine.id,
+            'limit': 1,
+            'ordering': '-start_time',
+          },
+        );
+        
+        if (response.data != null && (response.data as List).isNotEmpty) {
+          final lastSession = response.data[0];
+          final List setsList = lastSession['sets'] ?? [];
+          for (var setData in setsList) {
+            final exId = setData['exercise'];
+            if (exId != null) {
+              previousData.putIfAbsent(exId, () => []).add(setData);
+            }
+          }
+        }
+      } catch (e) {
+        print('Error fetching previous session: $e');
+      }
+
       // Map routine exercises to active exercises
       activeExercises = routine.exercises.map((routineEx) {
+        final prevSets = previousData[routineEx.exerciseId];
+        
         return ActiveExercise(
           routineExercise: routineEx,
           sets: List.generate(
             routineEx.targetSets,
-            (index) => WorkoutSetData(
-              weight: routineEx.targetWeight,
-              reps: routineEx.targetReps,
-              type: 'normal',
-            ),
+            (index) {
+              double? prevW;
+              int? prevR;
+              
+              if (prevSets != null && index < prevSets.length) {
+                prevW = double.tryParse(prevSets[index]['weight'].toString());
+                prevR = int.tryParse(prevSets[index]['reps'].toString());
+              }
+
+              return WorkoutSetData(
+                weight: routineEx.targetWeight,
+                reps: routineEx.targetReps,
+                type: 'normal',
+                prevWeight: prevW,
+                prevReps: prevR,
+                wasModifiedWeight: false,
+                wasModifiedReps: false,
+              );
+            },
           ),
         );
       }).toList();
     }
 
     state = state.copyWith(
-      isActive: true,
-      routine: routine,
-      sessionName: sessionName ?? (routine != null ? routine.name : 'Entrenamiento Rápido'),
+      isLoading: false,
       startTime: DateTime.now(),
       elapsedSeconds: 0,
       activeExercises: activeExercises,
@@ -91,6 +143,14 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
       templateReps = lastSet.reps;
     }
 
+    // Check if there is previous data for this specific set index
+    double? prevW;
+    int? prevR;
+    
+    // We would need to store the raw previous data in the state to access it here, 
+    // or just assume we don't have it for manually added sets beyond the initial ones.
+    // For now, let's just keep it simple. If we wanted to be perfect, we'd store the previousData Map in the state.
+
     final newSet = WorkoutSetData(
       weight: templateWeight,
       reps: templateReps,
@@ -118,6 +178,11 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
           reps: reps,
           type: type,
           rpe: rpe,
+          wasModifiedWeight: weight != null ? true : set.wasModifiedWeight,
+          wasModifiedReps: reps != null ? true : set.wasModifiedReps,
+          wasModifiedRpe: rpe != null ? true : set.wasModifiedRpe,
+          // Auto-complete if rest timer is disabled and reps were provided
+          isCompleted: (!state.enableRestTimer && reps != null) ? true : set.isCompleted,
         );
       }
       return set;
@@ -137,6 +202,20 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     if (exercise.sets.length <= 1) return;
 
     final updatedSets = exercise.sets.where((set) => set.id != setId).toList();
+
+    final newExercises = List<ActiveExercise>.from(state.activeExercises);
+    newExercises[exerciseIndex] = exercise.copyWith(sets: updatedSets);
+
+    state = state.copyWith(activeExercises: newExercises);
+  }
+
+  void removeLastSet(int exerciseIndex) {
+    if (!state.isActive || exerciseIndex >= state.activeExercises.length) return;
+
+    final exercise = state.activeExercises[exerciseIndex];
+    if (exercise.sets.length <= 1) return;
+
+    final updatedSets = List<WorkoutSetData>.from(exercise.sets)..removeLast();
 
     final newExercises = List<ActiveExercise>.from(state.activeExercises);
     newExercises[exerciseIndex] = exercise.copyWith(sets: updatedSets);
@@ -166,11 +245,23 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     state = state.copyWith(activeExercises: newExercises);
 
     // If it was just marked as completed (and wasn't before), trigger rest timer
-    if (!wasCompletedBefore && isCompletedNow) {
+    if (!wasCompletedBefore && isCompletedNow && state.enableRestTimer) {
       // Note: Here we would get the rest_time_seconds from the model's routine if we had added it to the frontend!
       // For now, default to 90 seconds. We can update this when syncing the new model fields. 
       _startRestTimer(90);
     }
+  }
+
+  void toggleRestTimer(bool enabled) {
+    state = state.copyWith(enableRestTimer: enabled);
+    // If we are currently resting and disable the timer, stop it
+    if (!enabled && state.isResting) {
+      stopRestTimer();
+    }
+  }
+
+  void toggleRpe(bool enabled) {
+    state = state.copyWith(enableRpe: enabled);
   }
 
   void _startRestTimer(int seconds) {
@@ -204,12 +295,50 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
   Future<void> finishWorkout() async {
     if (!state.isActive) return;
 
+    final endTime = DateTime.now();
+    
+    // Stop timers immediately and set state as not active
     _workoutTimer?.cancel();
     _restTimer?.cancel();
+    final savedState = state; // Keep a copy for the API call
+    state = state.copyWith(isActive: false, isLoading: true); // Show loading while saving
 
-    // TODO: Send data to the backend API via Workout repository
+    // Prepare the sets data (ONLY completed sets)
+    final List<Map<String, dynamic>> sets = [];
+    for (var activeExercise in savedState.activeExercises) {
+      for (int i = 0; i < activeExercise.sets.length; i++) {
+        final setData = activeExercise.sets[i];
+        if (setData.isCompleted) {
+          sets.add({
+            'exercise': activeExercise.routineExercise.exerciseId,
+            'set_number': sets.length + 1, // Re-index to be sequential
+            'set_type': setData.type,
+            'weight': setData.weight,
+            'reps': setData.reps,
+            'rpe': setData.rpe?.round(),
+            'is_completed': true,
+          });
+        }
+      }
+    }
 
-    state = LiveWorkoutState(); // Reset state
+    try {
+      final response = await _api.post('workouts/', data: {
+        'routine': savedState.routine?.id,
+        'name': savedState.sessionName,
+        'end_time': endTime.toIso8601String(),
+        'is_completed': true,
+        'sets': sets,
+      });
+      
+      print('Workout saved successfully: ${response.data}');
+      state = LiveWorkoutState(); // Reset state
+    } catch (e) {
+      print('Error finishing workout: $e');
+      // If error, we might want to restore isActive=true so they can retry?
+      // For now, just reset to avoid stuck state
+      state = LiveWorkoutState();
+    }
   }
 
   void cancelWorkout() {
