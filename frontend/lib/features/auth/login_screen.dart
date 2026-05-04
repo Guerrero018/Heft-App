@@ -52,27 +52,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               // Logo Area (Mimicking the image logo style)
               Center(
                 child: Container(
-                  height: 100,
-                  width: 100,
+                  height: 200,
+                  width: 200,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(40),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.white.withOpacity(0.2),
+                        color: AppTheme.primaryColor.withOpacity(0.2),
                         blurRadius: 20,
                         spreadRadius: 5,
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Text(
-                      'H',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 60,
-                        fontWeight: FontWeight.w900,
-                      ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(40),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
