@@ -11,6 +11,12 @@ class WorkoutSetData {
   final int reps;
   final double? rpe;
   final bool isCompleted;
+  final double? prevWeight;
+  final int? prevReps;
+
+  final bool wasModifiedWeight;
+  final bool wasModifiedReps;
+  final bool wasModifiedRpe;
 
   WorkoutSetData({
     String? id,
@@ -19,6 +25,11 @@ class WorkoutSetData {
     this.reps = 0,
     this.rpe,
     this.isCompleted = false,
+    this.prevWeight,
+    this.prevReps,
+    this.wasModifiedWeight = false,
+    this.wasModifiedReps = false,
+    this.wasModifiedRpe = false,
   }) : id = id ?? uuid.v4();
 
   WorkoutSetData copyWith({
@@ -28,6 +39,11 @@ class WorkoutSetData {
     int? reps,
     double? rpe,
     bool? isCompleted,
+    double? prevWeight,
+    int? prevReps,
+    bool? wasModifiedWeight,
+    bool? wasModifiedReps,
+    bool? wasModifiedRpe,
   }) {
     return WorkoutSetData(
       id: id ?? this.id,
@@ -36,6 +52,11 @@ class WorkoutSetData {
       reps: reps ?? this.reps,
       rpe: rpe ?? this.rpe,
       isCompleted: isCompleted ?? this.isCompleted,
+      prevWeight: prevWeight ?? this.prevWeight,
+      prevReps: prevReps ?? this.prevReps,
+      wasModifiedWeight: wasModifiedWeight ?? this.wasModifiedWeight,
+      wasModifiedReps: wasModifiedReps ?? this.wasModifiedReps,
+      wasModifiedRpe: wasModifiedRpe ?? this.wasModifiedRpe,
     );
   }
 }
@@ -72,6 +93,10 @@ class LiveWorkoutState {
   final bool isResting;
   final int restSecondsRemaining;
 
+  // Settings
+  final bool enableRestTimer;
+  final bool isLoading;
+
   LiveWorkoutState({
     this.isActive = false,
     this.routine,
@@ -81,6 +106,8 @@ class LiveWorkoutState {
     this.activeExercises = const [],
     this.isResting = false,
     this.restSecondsRemaining = 0,
+    this.enableRestTimer = true,
+    this.isLoading = false,
   });
 
   LiveWorkoutState copyWith({
@@ -92,6 +119,8 @@ class LiveWorkoutState {
     List<ActiveExercise>? activeExercises,
     bool? isResting,
     int? restSecondsRemaining,
+    bool? enableRestTimer,
+    bool? isLoading,
   }) {
     return LiveWorkoutState(
       isActive: isActive ?? this.isActive,
@@ -102,6 +131,8 @@ class LiveWorkoutState {
       activeExercises: activeExercises ?? this.activeExercises,
       isResting: isResting ?? this.isResting,
       restSecondsRemaining: restSecondsRemaining ?? this.restSecondsRemaining,
+      enableRestTimer: enableRestTimer ?? this.enableRestTimer,
+      isLoading: isLoading ?? this.isLoading,
     );
   }
 }

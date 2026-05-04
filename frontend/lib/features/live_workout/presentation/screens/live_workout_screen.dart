@@ -16,6 +16,52 @@ class LiveWorkoutScreen extends ConsumerWidget {
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
+  void _showSettings(BuildContext context, WidgetRef ref) {
+    final state = ref.read(liveWorkoutProvider);
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Configuraciones de Sesión',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppTheme.hintColor),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SwitchListTile(
+              title: const Text('Temporizador de Descanso', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Inicia automáticamente el descanso al completar una serie', style: TextStyle(color: AppTheme.hintColor)),
+              value: state.enableRestTimer,
+              activeColor: AppTheme.primaryColor,
+              onChanged: (val) {
+                ref.read(liveWorkoutProvider.notifier).setRestTimerEnabled(val);
+                Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _confirmCancel(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -81,10 +127,14 @@ class LiveWorkoutScreen extends ConsumerWidget {
           ),
           centerTitle: true,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.settings_outlined, color: AppTheme.hintColor),
+              onPressed: () => _showSettings(context, ref),
+            ),
             TextButton(
-              onPressed: () {
-                ref.read(liveWorkoutProvider.notifier).finishWorkout();
-                Navigator.of(context).pop();
+              onPressed: () async {
+                await ref.read(liveWorkoutProvider.notifier).finishWorkout();
+                if (context.mounted) Navigator.of(context).pop();
               },
               child: const Text('TERMINAR', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
             ),
@@ -92,7 +142,9 @@ class LiveWorkoutScreen extends ConsumerWidget {
         ),
         body: Stack(
           children: [
-            if (state.activeExercises.isEmpty)
+            if (state.isLoading)
+              const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
+            else if (state.activeExercises.isEmpty)
               _buildEmptyState(context)
             else
               ListView.builder(
@@ -201,6 +253,7 @@ class _ActiveExerciseCard extends ConsumerWidget {
           Row(
             children: [
               const SizedBox(width: 40, child: Text('Set', style: TextStyle(color: AppTheme.hintColor, fontWeight: FontWeight.bold))),
+              const SizedBox(width: 80, child: Text('Anterior', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.hintColor, fontWeight: FontWeight.bold))),
               const Spacer(),
               const SizedBox(width: 60, child: Text('kg', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.hintColor, fontWeight: FontWeight.bold))),
               const SizedBox(width: 60, child: Text('Reps', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.hintColor, fontWeight: FontWeight.bold))),
@@ -222,15 +275,28 @@ class _ActiveExerciseCard extends ConsumerWidget {
 
           const SizedBox(height: 16),
           
-          // Botón Añadir Serie
-          Center(
-            child: TextButton.icon(
-              onPressed: () {
-                ref.read(liveWorkoutProvider.notifier).addSet(exerciseIndex);
-              },
-              icon: const Icon(Icons.add, color: AppTheme.hintColor),
-              label: const Text('Añadir Serie', style: TextStyle(color: AppTheme.hintColor)),
-            ),
+          // Botones Serie
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  ref.read(liveWorkoutProvider.notifier).addSet(exerciseIndex);
+                },
+                icon: const Icon(Icons.add, color: AppTheme.hintColor),
+                label: const Text('Añadir Serie', style: TextStyle(color: AppTheme.hintColor)),
+              ),
+              if (exercise.sets.length > 1) ...[
+                const SizedBox(width: 16),
+                TextButton.icon(
+                  onPressed: () {
+                    ref.read(liveWorkoutProvider.notifier).removeLastSet(exerciseIndex);
+                  },
+                  icon: const Icon(Icons.remove, color: Colors.redAccent),
+                  label: const Text('Quitar Serie', style: TextStyle(color: Colors.redAccent)),
+                ),
+              ],
+            ],
           )
         ],
       ),
@@ -281,14 +347,32 @@ class _SetRow extends ConsumerWidget {
               ),
             ),
           ),
+          
+          // Previous Value
+          SizedBox(
+            width: 80,
+            child: Center(
+              child: Text(
+                setData.prevWeight != null 
+                  ? '${setData.prevWeight.toString().replaceAll(RegExp(r'\.0$'), '')}kg x ${setData.prevReps}' 
+                  : '-',
+                style: const TextStyle(color: AppTheme.hintColor, fontSize: 12),
+              ),
+            ),
+          ),
+
           const Spacer(),
           
           // Weight Input
           SizedBox(
             width: 60,
             child: _buildInput(
-              value: setData.weight == 0 ? '' : setData.weight.toString().replaceAll(RegExp(r'\.0$'), ''),
+              value: setData.wasModifiedWeight ? setData.weight.toString().replaceAll(RegExp(r'\.0$'), '') : '',
+              hint: setData.prevWeight != null 
+                ? setData.prevWeight.toString().replaceAll(RegExp(r'\.0$'), '') 
+                : (setData.weight > 0 ? setData.weight.toString().replaceAll(RegExp(r'\.0$'), '') : '0'),
               isCompleted: isCompleted,
+              isModified: setData.wasModifiedWeight,
               onChanged: (val) {
                 final weight = double.tryParse(val);
                 if (weight != null) {
@@ -302,8 +386,12 @@ class _SetRow extends ConsumerWidget {
           SizedBox(
             width: 60,
             child: _buildInput(
-              value: setData.reps == 0 ? '' : setData.reps.toString(),
+              value: setData.wasModifiedReps ? setData.reps.toString() : '',
+              hint: setData.prevReps != null 
+                ? setData.prevReps.toString() 
+                : (setData.reps > 0 ? setData.reps.toString() : '0'),
               isCompleted: isCompleted,
+              isModified: setData.wasModifiedReps,
               onChanged: (val) {
                 final reps = int.tryParse(val);
                 if (reps != null) {
@@ -321,6 +409,7 @@ class _SetRow extends ConsumerWidget {
                 value: setData.rpe?.toString() ?? '',
                  hint: '-',
                 isCompleted: isCompleted,
+                isModified: setData.wasModifiedRpe,
                 onChanged: (val) {
                   final rpe = double.tryParse(val);
                   ref.read(liveWorkoutProvider.notifier).updateSet(exerciseIndex, setData.id, rpe: rpe);
@@ -347,7 +436,22 @@ class _SetRow extends ConsumerWidget {
     );
   }
 
-  Widget _buildInput({required String value, String hint = '0', required bool isCompleted, required Function(String) onChanged}) {
+  Widget _buildInput({
+    required String value, 
+    String hint = '0', 
+    required bool isCompleted, 
+    bool isModified = true,
+    required Function(String) onChanged
+  }) {
+    Color textColor;
+    if (isCompleted) {
+      textColor = AppTheme.primaryColor;
+    } else if (isModified) {
+      textColor = AppTheme.textColor; // White
+    } else {
+      textColor = AppTheme.hintColor; // Gray
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
@@ -359,13 +463,17 @@ class _SetRow extends ConsumerWidget {
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: isCompleted ? AppTheme.primaryColor : AppTheme.textColor,
-          fontWeight: isCompleted ? FontWeight.bold : FontWeight.normal,
+          color: textColor,
+          fontWeight: isCompleted || isModified ? FontWeight.bold : FontWeight.normal,
         ),
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: hint,
-          hintStyle: TextStyle(color: AppTheme.hintColor.withOpacity(0.5)),
+          hintStyle: TextStyle(
+            color: AppTheme.hintColor.withOpacity(0.3),
+            fontWeight: FontWeight.normal,
+          ),
+          isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
         onChanged: onChanged,
