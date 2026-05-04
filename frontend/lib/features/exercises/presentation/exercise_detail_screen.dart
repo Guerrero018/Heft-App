@@ -39,7 +39,7 @@ class ExerciseDetailScreen extends StatelessWidget {
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Center(
                           child: CircularProgressIndicator(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                            color: AppTheme.primaryColor.withOpacity(0.3),
                           ),
                         ),
                         errorWidget: (context, url, error) {
@@ -58,10 +58,10 @@ class ExerciseDetailScreen extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        stops: const [0.75, 0.875, 1.0],
+                        stops: const [0.9, 0.95, 1.0],
                         colors: [
                           Colors.transparent,
-                          AppTheme.surfaceColor.withValues(alpha: 0.5),
+                          AppTheme.surfaceColor.withOpacity(0.5),
                           AppTheme.surfaceColor,
                         ],
                       ),

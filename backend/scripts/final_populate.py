@@ -52,13 +52,22 @@ def populate():
     with open(INPUT_FILE, "r", encoding="utf-8") as f:
         all_exercises = json.load(f)
 
-    print(f"🗑️ Limpiando catálogo global actual...")
-    Exercise.objects.filter(is_global=True).delete()
+    print(f"🔍 Comprobando ejercicios existentes en la BD...")
+    existing_ids = set(Exercise.objects.filter(is_global=True).values_list('external_id', flat=True))
+    print(f"   ℹ️ Se han encontrado {len(existing_ids)} ejercicios ya registrados.")
 
-    print(f"🚀 Insertando {len(all_exercises)} ejercicios con lógica inteligente...")
+    print(f"🚀 Procesando {len(all_exercises)} ejercicios del JSON...")
     
-    count = 0
+    new_count = 0
+    skipped_count = 0
     for ex in all_exercises:
+        ex_id = str(ex.get('id'))
+        
+        # Saltar si ya existe
+        if ex_id in existing_ids:
+            skipped_count += 1
+            continue
+
         try:
             # 1. Determinar el grupo muscular refinado (usando target si es posible)
             raw_target = ex.get('target', '').lower()
@@ -80,7 +89,7 @@ def populate():
                     break
 
             Exercise.objects.create(
-                external_id=str(ex.get('id')),
+                external_id=ex_id,
                 name=ex.get('name', 'Sin nombre').capitalize(),
                 description=ex.get('description', ''),
                 instructions=ex.get('instructions', []),
@@ -94,14 +103,16 @@ def populate():
                 gif_url=ex.get('gifUrl'),
                 is_global=True
             )
-            count += 1
-            if count % 100 == 0:
-                print(f"   ✅ {count} procesados...")
+            new_count += 1
+            if new_count % 100 == 0:
+                print(f"   ✅ {new_count} nuevos insertados...")
                 
         except Exception as e:
-            print(f"⚠️ Error en ejercicio {ex.get('id')}: {e}")
+            print(f"⚠️ Error en ejercicio {ex_id}: {e}")
 
-    print(f"\n✨ ¡HECHO! {count} ejercicios importados con inteligencia de filtros.")
+    print(f"\n✨ ¡HECHO!")
+    print(f"   ➕ Nuevos insertados: {new_count}")
+    print(f"   ⏭️ Saltados (ya existían): {skipped_count}")
 
 if __name__ == "__main__":
     populate()

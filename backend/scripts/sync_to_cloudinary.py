@@ -27,6 +27,8 @@ cloudinary.config(
     secure=True
 )
 
+import time
+
 def sync_gifs():
     # Solo ejercicios globales que tengan external_id y que NO tengan ya un link de Cloudinary
     exercises = Exercise.objects.filter(
@@ -35,20 +37,17 @@ def sync_gifs():
     ).exclude(gif_url__icontains="cloudinary")
 
     total_pending = exercises.count()
+    if total_pending == 0:
+        print("✅ No hay ejercicios pendientes de sincronizar.")
+        return
+
     print(f"🚀 Iniciando sincronización de {total_pending} ejercicios pendientes...")
     
-    # Intentamos obtener la key del .env (prioridad a la que usa el frontend si está disponible)
     api_key = os.getenv('EXERCISE_DB_KEY')
     
     count = 0
-    # Límite por ejecución para evitar bloqueos largos (ajustable)
-    limit = 500 
 
     for ex in exercises:
-        if count >= limit:
-            print(f"🛑 Se alcanzó el límite de {limit} por esta ejecución.")
-            break
-
         try:
             # 1. Construir URL oficial de descarga (V2 a 180p)
             download_url = f"https://exercisedb.p.rapidapi.com/image?exerciseId={ex.external_id}&resolution=180"
@@ -58,20 +57,28 @@ def sync_gifs():
             }
 
             print(f"📥 [{count+1}/{total_pending}] Descargando: {ex.name} ({ex.external_id})...")
+            
+            # Espera más larga (5s) para ser extremadamente cautelosos con RapidAPI
+            time.sleep(5) 
+            
             response = requests.get(download_url, headers=headers, timeout=15)
 
+            # Si da 429, intentamos esperar un poco más y reintentar UNA VEZ
             if response.status_code == 429:
-                print("\n❌ ERROR 429: Cuota de RapidAPI agotada para esta clave.")
-                print("💡 Tip: Espera a mañana o cambia la EXERCISE_DB_KEY en el .env")
+                print("   ⏳ Límite detectado. Esperando 10s extra para reintentar...")
+                time.sleep(10)
+                response = requests.get(download_url, headers=headers, timeout=15)
+
+            if response.status_code == 429:
+                print("\n❌ ERROR 429 persistente: Límite de RapidAPI alcanzado.")
+                print("💡 Tip: La cuenta podría tener un límite de peticiones por minuto muy bajo.")
                 break
             
             if response.status_code != 200:
                 print(f"⚠️ Fallo al descargar {ex.name}: Código {response.status_code}")
-                # Si es un error de ID no encontrado, podríamos marcarlo para no reintentar
                 continue
 
             # 2. Subir a Cloudinary
-            # public_id basado en external_id para evitar duplicados en Cloudinary
             upload_result = cloudinary.uploader.upload(
                 response.content,
                 folder="heft/exercises",
@@ -86,7 +93,7 @@ def sync_gifs():
             ex.save()
 
             count += 1
-            print(f"✅ Sincronizado: {new_url}")
+            print(f"   ✅ Sincronizado en Cloudinary.")
 
         except Exception as e:
             print(f"❌ Error inesperado en {ex.name}: {e}")
