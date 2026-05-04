@@ -10,6 +10,7 @@ class WorkoutSetData {
   final double weight;
   final int reps;
   final double? rpe;
+  final int? rir;
   final bool isCompleted;
   final double? prevWeight;
   final int? prevReps;
@@ -17,6 +18,7 @@ class WorkoutSetData {
   final bool wasModifiedWeight;
   final bool wasModifiedReps;
   final bool wasModifiedRpe;
+  final bool wasModifiedRir;
 
   WorkoutSetData({
     String? id,
@@ -24,12 +26,14 @@ class WorkoutSetData {
     this.weight = 0.0,
     this.reps = 0,
     this.rpe,
+    this.rir,
     this.isCompleted = false,
     this.prevWeight,
     this.prevReps,
     this.wasModifiedWeight = false,
     this.wasModifiedReps = false,
     this.wasModifiedRpe = false,
+    this.wasModifiedRir = false,
   }) : id = id ?? uuid.v4();
 
   WorkoutSetData copyWith({
@@ -38,12 +42,14 @@ class WorkoutSetData {
     double? weight,
     int? reps,
     double? rpe,
+    int? rir,
     bool? isCompleted,
     double? prevWeight,
     int? prevReps,
     bool? wasModifiedWeight,
     bool? wasModifiedReps,
     bool? wasModifiedRpe,
+    bool? wasModifiedRir,
   }) {
     return WorkoutSetData(
       id: id ?? this.id,
@@ -51,12 +57,14 @@ class WorkoutSetData {
       weight: weight ?? this.weight,
       reps: reps ?? this.reps,
       rpe: rpe ?? this.rpe,
+      rir: rir ?? this.rir,
       isCompleted: isCompleted ?? this.isCompleted,
       prevWeight: prevWeight ?? this.prevWeight,
       prevReps: prevReps ?? this.prevReps,
       wasModifiedWeight: wasModifiedWeight ?? this.wasModifiedWeight,
       wasModifiedReps: wasModifiedReps ?? this.wasModifiedReps,
       wasModifiedRpe: wasModifiedRpe ?? this.wasModifiedRpe,
+      wasModifiedRir: wasModifiedRir ?? this.wasModifiedRir,
     );
   }
 }
@@ -96,6 +104,7 @@ class LiveWorkoutState {
   // Settings
   final bool enableRestTimer;
   final bool enableRpe;
+  final bool enableRir;
   final bool isLoading;
 
   LiveWorkoutState({
@@ -109,6 +118,7 @@ class LiveWorkoutState {
     this.restSecondsRemaining = 0,
     this.enableRestTimer = false,
     this.enableRpe = false,
+    this.enableRir = false,
     this.isLoading = false,
   });
 
@@ -123,6 +133,7 @@ class LiveWorkoutState {
     int? restSecondsRemaining,
     bool? enableRestTimer,
     bool? enableRpe,
+    bool? enableRir,
     bool? isLoading,
   }) {
     return LiveWorkoutState(
@@ -136,6 +147,7 @@ class LiveWorkoutState {
       restSecondsRemaining: restSecondsRemaining ?? this.restSecondsRemaining,
       enableRestTimer: enableRestTimer ?? this.enableRestTimer,
       enableRpe: enableRpe ?? this.enableRpe,
+      enableRir: enableRir ?? this.enableRir,
       isLoading: isLoading ?? this.isLoading,
     );
   }

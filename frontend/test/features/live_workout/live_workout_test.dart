@@ -57,6 +57,16 @@ void main() {
     expect(container.read(liveWorkoutProvider).enableRpe, false);
   });
 
+  test('Toggling RIR updates state', () {
+    final notifier = container.read(liveWorkoutProvider.notifier);
+    
+    notifier.toggleRir(true);
+    expect(container.read(liveWorkoutProvider).enableRir, true);
+    
+    notifier.toggleRir(false);
+    expect(container.read(liveWorkoutProvider).enableRir, false);
+  });
+
   test('Toggling rest timer updates state', () {
     final notifier = container.read(liveWorkoutProvider.notifier);
     
@@ -172,5 +182,56 @@ void main() {
     
     // Verify state reset
     expect(container.read(liveWorkoutProvider).isActive, false);
+  });
+
+  test('Removing an exercise updates state correctly', () async {
+    final notifier = container.read(liveWorkoutProvider.notifier);
+    await notifier.startWorkout(null);
+    
+    final ex1 = RoutineExercise(id: 1, exerciseId: 101, exerciseName: 'A', muscleGroup: 'M', order: 1, targetSets: 1, targetReps: 1, targetWeight: 1);
+    final ex2 = RoutineExercise(id: 2, exerciseId: 102, exerciseName: 'B', muscleGroup: 'M', order: 2, targetSets: 1, targetReps: 1, targetWeight: 1);
+    
+    notifier.addExercise(ex1);
+    notifier.addExercise(ex2);
+    expect(container.read(liveWorkoutProvider).activeExercises.length, 2);
+    
+    notifier.removeExercise(0); // Remove first
+    expect(container.read(liveWorkoutProvider).activeExercises.length, 1);
+    expect(container.read(liveWorkoutProvider).activeExercises[0].routineExercise.exerciseName, 'B');
+  });
+
+  test('Replacing an exercise updates state and resets sets', () async {
+    final notifier = container.read(liveWorkoutProvider.notifier);
+    await notifier.startWorkout(null);
+    
+    final ex1 = RoutineExercise(id: 1, exerciseId: 101, exerciseName: 'Old', muscleGroup: 'M', order: 1, targetSets: 3, targetReps: 10, targetWeight: 20);
+    notifier.addExercise(ex1);
+    
+    final ex2 = RoutineExercise(id: 2, exerciseId: 102, exerciseName: 'New', muscleGroup: 'M', order: 1, targetSets: 1, targetReps: 5, targetWeight: 10);
+    notifier.replaceExercise(0, ex2);
+    
+    final state = container.read(liveWorkoutProvider);
+    expect(state.activeExercises[0].routineExercise.exerciseName, 'New');
+    // Note: our implementation resets sets to [WorkoutSetData()]
+    expect(state.activeExercises[0].sets.length, 1);
+  });
+
+  test('Reordering exercises updates their position', () async {
+    final notifier = container.read(liveWorkoutProvider.notifier);
+    await notifier.startWorkout(null);
+    
+    final ex1 = RoutineExercise(id: 1, exerciseId: 101, exerciseName: 'First', muscleGroup: 'M', order: 1, targetSets: 1, targetReps: 1, targetWeight: 1);
+    final ex2 = RoutineExercise(id: 2, exerciseId: 102, exerciseName: 'Second', muscleGroup: 'M', order: 2, targetSets: 1, targetReps: 1, targetWeight: 1);
+    
+    notifier.addExercise(ex1);
+    notifier.addExercise(ex2);
+    
+    // Swap 0 and 1
+    // oldIndex = 0, newIndex = 2 (in ReorderableListView, moving 0 to the end means newIndex is 2)
+    notifier.reorderExercises(0, 2);
+    
+    final state = container.read(liveWorkoutProvider);
+    expect(state.activeExercises[0].routineExercise.exerciseName, 'Second');
+    expect(state.activeExercises[1].routineExercise.exerciseName, 'First');
   });
 }

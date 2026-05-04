@@ -128,6 +128,39 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     );
   }
 
+  void removeExercise(int index) {
+    if (!state.isActive || index < 0 || index >= state.activeExercises.length) return;
+    
+    final newList = List<ActiveExercise>.from(state.activeExercises)..removeAt(index);
+    state = state.copyWith(activeExercises: newList);
+  }
+
+  void replaceExercise(int index, RoutineExercise newExercise) {
+    if (!state.isActive || index < 0 || index >= state.activeExercises.length) return;
+    
+    final newActiveExercise = ActiveExercise(
+      routineExercise: newExercise,
+      sets: [WorkoutSetData()], // Reset sets for the new exercise
+    );
+    
+    final newList = List<ActiveExercise>.from(state.activeExercises);
+    newList[index] = newActiveExercise;
+    state = state.copyWith(activeExercises: newList);
+  }
+
+  void reorderExercises(int oldIndex, int newIndex) {
+    if (!state.isActive) return;
+    
+    final newList = List<ActiveExercise>.from(state.activeExercises);
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = newList.removeAt(oldIndex);
+    newList.insert(newIndex, item);
+    
+    state = state.copyWith(activeExercises: newList);
+  }
+
   void addSet(int exerciseIndex) {
     if (!state.isActive || exerciseIndex >= state.activeExercises.length) return;
 
@@ -167,7 +200,7 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     state = state.copyWith(activeExercises: newExercises);
   }
 
-  void updateSet(int exerciseIndex, String setId, {double? weight, int? reps, String? type, double? rpe}) {
+  void updateSet(int exerciseIndex, String setId, {double? weight, int? reps, String? type, double? rpe, int? rir}) {
     if (!state.isActive || exerciseIndex >= state.activeExercises.length) return;
 
     final exercise = state.activeExercises[exerciseIndex];
@@ -178,9 +211,11 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
           reps: reps,
           type: type,
           rpe: rpe,
+          rir: rir,
           wasModifiedWeight: weight != null ? true : set.wasModifiedWeight,
           wasModifiedReps: reps != null ? true : set.wasModifiedReps,
           wasModifiedRpe: rpe != null ? true : set.wasModifiedRpe,
+          wasModifiedRir: rir != null ? true : set.wasModifiedRir,
           // Auto-complete if rest timer is disabled and reps were provided
           isCompleted: (!state.enableRestTimer && reps != null) ? true : set.isCompleted,
         );
@@ -264,6 +299,10 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     state = state.copyWith(enableRpe: enabled);
   }
 
+  void toggleRir(bool enabled) {
+    state = state.copyWith(enableRir: enabled);
+  }
+
   void _startRestTimer(int seconds) {
     _restTimer?.cancel();
     state = state.copyWith(isResting: true, restSecondsRemaining: seconds);
@@ -316,6 +355,7 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
             'weight': setData.weight,
             'reps': setData.reps,
             'rpe': setData.rpe?.round(),
+            'rir': setData.rir,
             'is_completed': true,
           });
         }
