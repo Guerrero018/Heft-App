@@ -87,20 +87,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               // Logo Area (Mimicking the image logo style)
               Center(
                 child: Container(
-                  height: 80,
-                  width: 80,
+                  height: 160,
+                  width: 160,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(32),
                   ),
-                  child: const Center(
-                    child: Text(
-                      'H',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 48,
-                        fontWeight: FontWeight.w900,
-                      ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
