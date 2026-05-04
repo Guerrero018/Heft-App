@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../routines/domain/routine_model.dart';
 import '../../../core/api/api_client.dart';
@@ -17,6 +18,8 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     return LiveWorkoutState();
   }
 
+  Dio get _api => ref.read(apiClientProvider);
+
   Future<void> startWorkout(Routine? routine, {String? sessionName}) async {
     if (state.isActive || state.isLoading) return;
 
@@ -34,7 +37,7 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
       // Fetch previous session for this routine to get "ghost" values
       Map<int, List<Map<String, dynamic>>> previousData = {};
       try {
-        final response = await apiClient.get(
+        final response = await _api.get(
           'workouts/',
           queryParameters: {
             'routine': routine.id,
@@ -320,7 +323,7 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     }
 
     try {
-      final response = await apiClient.post('workouts/', data: {
+      final response = await _api.post('workouts/', data: {
         'routine': savedState.routine?.id,
         'name': savedState.sessionName,
         'end_time': endTime.toIso8601String(),
