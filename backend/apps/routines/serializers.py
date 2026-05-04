@@ -5,10 +5,12 @@ from apps.exercises.serializers import ExerciseSerializer
 class RoutineExerciseSerializer(serializers.ModelSerializer):
     exercise_name = serializers.ReadOnlyField(source='exercise.name')
     muscle_group = serializers.ReadOnlyField(source='exercise.muscle_group')
+    external_id = serializers.ReadOnlyField(source='exercise.external_id')
+    gif_url = serializers.ReadOnlyField(source='exercise.gif_url')
     
     class Meta:
         model = RoutineExercise
-        fields = ['id', 'exercise', 'exercise_name', 'muscle_group', 'order', 'target_sets', 'target_reps', 'target_weight']
+        fields = ['id', 'exercise', 'exercise_name', 'muscle_group', 'external_id', 'gif_url', 'order', 'target_sets', 'target_reps', 'target_weight', 'rest_time_seconds']
 
 class RoutineSerializer(serializers.ModelSerializer):
     exercises = RoutineExerciseSerializer(many=True, required=False)

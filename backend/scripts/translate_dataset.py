@@ -55,7 +55,14 @@ def translate_batch(batch):
                     response_mime_type="application/json",
                 )
             )
-            data = json.loads(response.text)
+            
+            # Limpieza robusta del JSON (Eliminar comas colgantes y espacios extra)
+            import re
+            text = response.text.strip()
+            # Eliminar comas seguidas de un cierre de array o objeto: ,] o ,}
+            text = re.sub(r',\s*([\]}])', r'\1', text)
+            
+            data = json.loads(text)
             if data:
                 return data
             raise Exception("Respuesta vacía")

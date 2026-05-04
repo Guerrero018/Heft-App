@@ -4,10 +4,12 @@ from apps.exercises.serializers import ExerciseSerializer
 
 class WorkoutSetSerializer(serializers.ModelSerializer):
     exercise_name = serializers.ReadOnlyField(source='exercise.name')
+    # id is explicitly added so we can match sets when updating
+    id = serializers.IntegerField(required=False)
 
     class Meta:
         model = WorkoutSet
-        fields = ['id', 'exercise', 'exercise_name', 'set_number', 'weight', 'reps', 'is_completed']
+        fields = ['id', 'exercise', 'exercise_name', 'set_number', 'set_type', 'weight', 'reps', 'rpe', 'is_completed']
 
 class WorkoutSessionSerializer(serializers.ModelSerializer):
     sets = WorkoutSetSerializer(many=True, required=False)
@@ -27,6 +29,8 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
         session = WorkoutSession.objects.create(**validated_data)
         
         for set_data in sets_data:
+            # remove id if it somehow got through on create
+            set_data.pop('id', None)
             WorkoutSet.objects.create(workout_session=session, **set_data)
             
         return session
@@ -36,12 +40,34 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
         
         instance.date = validated_data.get('date', instance.date)
         instance.notes = validated_data.get('notes', instance.notes)
+        instance.end_time = validated_data.get('end_time', instance.end_time)
+        instance.is_completed = validated_data.get('is_completed', instance.is_completed)
         instance.save()
 
         if sets_data is not None:
-            # Recreate sets for simplicity during updates
-            instance.sets.all().delete()
+            # Non-destructive update: check existing IDs
+            existing_sets = {s.id: s for s in instance.sets.all()}
+            updated_set_ids = []
+
             for set_data in sets_data:
-                WorkoutSet.objects.create(workout_session=instance, **set_data)
+                set_id = set_data.get('id', None)
+                if set_id and set_id in existing_sets:
+                    # Update existing set
+                    workout_set = existing_sets[set_id]
+                    for attr, value in set_data.items():
+                        if attr != 'id':
+                            setattr(workout_set, attr, value)
+                    workout_set.save()
+                    updated_set_ids.append(set_id)
+                else:
+                    # Create new set
+                    set_data.pop('id', None) # remove id just in case
+                    new_set = WorkoutSet.objects.create(workout_session=instance, **set_data)
+                    updated_set_ids.append(new_set.id)
+
+            # Delete sets that were omitted
+            for old_id, old_set in existing_sets.items():
+                if old_id not in updated_set_ids:
+                    old_set.delete()
 
         return instance

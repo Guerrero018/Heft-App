@@ -50,10 +50,39 @@ class ExerciseNotifier extends Notifier<ExerciseState> {
             .toList();
         state = state.copyWith(exercises: exercises, isLoading: false);
       }
-    } on DioException catch (e) {
-      state = state.copyWith(isLoading: false, error: e.message);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> createCustomExercise({
+    required String name,
+    required String muscleGroup,
+    required String exerciseType,
+    String? description,
+    List<String>? instructions,
+    String? gifUrl,
+  }) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final response = await apiClient.post('exercises/', data: {
+        'name': name,
+        'muscle_group': muscleGroup,
+        'exercise_type': exerciseType,
+        'description': description ?? '',
+        'instructions': instructions ?? [],
+        'gif_url': gifUrl ?? '',
+        'is_global': false,
+      });
+      
+      final newExercise = Exercise.fromJson(response.data);
+      state = state.copyWith(
+        exercises: [newExercise, ...state.exercises],
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
     }
   }
 }

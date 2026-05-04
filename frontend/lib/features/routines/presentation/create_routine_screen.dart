@@ -5,6 +5,7 @@ import '../data/routine_provider.dart';
 import '../../exercises/data/exercise_provider.dart';
 import '../../exercises/domain/exercise_model.dart';
 import '../../exercises/presentation/exercise_detail_screen.dart';
+import '../../exercises/presentation/create_exercise_screen.dart';
 import '../domain/routine_model.dart';
 
 class CreateRoutineScreen extends ConsumerStatefulWidget {
@@ -33,6 +34,8 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
             id: e.exerciseId,
             name: e.exerciseName,
             muscleGroup: e.muscleGroup,
+            externalId: e.externalId,
+            gifUrl: e.gifUrl,
             exerciseType: 'otro', // fallback field for filters
             isGlobal: true, // not strictly used but required by model
           ),
@@ -386,7 +389,20 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
                     const Expanded(
                       child: Text('Ejercicios', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                     ),
-                    Text('${filtered.length} encontrados', style: const TextStyle(color: AppTheme.hintColor, fontSize: 12)),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const CreateExerciseScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Nuevo'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primaryColor,
+                        side: const BorderSide(color: AppTheme.primaryColor),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -491,9 +507,16 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                (e.equipment ?? e.exerciseType).replaceAll('_', ' ').toUpperCase(),
-                                style: const TextStyle(color: AppTheme.hintColor, fontSize: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  (e.equipment ?? e.exerciseType).replaceAll('_', ' ').toUpperCase(),
+                                  style: TextStyle(color: AppTheme.hintColor.withOpacity(0.8), fontSize: 10, fontWeight: FontWeight.w600),
+                                ),
                               ),
                             ],
                           ),
@@ -503,12 +526,20 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
                           children: [
                             IconButton(
                               icon: const Icon(Icons.info_outline, color: Colors.white24, size: 20),
-                              onPressed: () {
-                                Navigator.of(context).push(
+                              onPressed: () async {
+                                final exercise = await Navigator.of(context).push<Exercise>(
                                   MaterialPageRoute(
-                                    builder: (context) => ExerciseDetailScreen(exercise: e),
+                                    builder: (context) => ExerciseDetailScreen(
+                                      exercise: e,
+                                      showAddButton: true,
+                                    ),
                                   ),
                                 );
+                                
+                                // Si el usuario pulsó el botón "AÑADIR A RUTINA" dentro del detalle
+                                if (exercise != null && context.mounted) {
+                                  Navigator.of(context).pop(exercise);
+                                }
                               },
                             ),
                             const Icon(Icons.add, color: AppTheme.primaryColor, size: 20),

@@ -6,6 +6,9 @@ import '../profile/profile_screen.dart';
 import '../routines/data/routine_provider.dart';
 import '../routines/domain/routine_model.dart';
 import '../routines/presentation/create_routine_screen.dart';
+import '../exercises/presentation/exercise_catalog_screen.dart';
+import '../live_workout/domain/live_workout_provider.dart';
+import '../live_workout/presentation/screens/live_workout_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -83,18 +86,32 @@ class _InicioTab extends ConsumerWidget {
             children: [
               // Header con Saludo
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Hola de nuevo, ',
-                    style: TextStyle(color: AppTheme.hintColor, fontSize: 14),
+                  Row(
+                    children: [
+                      const Text(
+                        'Hola de nuevo, ',
+                        style: TextStyle(color: AppTheme.hintColor, fontSize: 14),
+                      ),
+                      Text(
+                        ref.watch(authProvider).user?['username'] ?? '',
+                        style: const TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    ref.watch(authProvider).user?['username'] ?? '',
-                    style: const TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const ExerciseCatalogScreen()),
+                      );
+                    },
+                    icon: Icon(Icons.fitness_center_rounded, color: AppTheme.hintColor.withOpacity(0.4), size: 20),
+                    tooltip: 'Biblioteca de ejercicios',
                   ),
                 ],
               ),
@@ -115,7 +132,12 @@ class _InicioTab extends ConsumerWidget {
                 title: 'Entrenamiento Vacío',
                 subtitle: 'Empieza sin una rutina definida',
                 icon: Icons.add_rounded,
-                onTap: () {},
+                onTap: () {
+                  ref.read(liveWorkoutProvider.notifier).startWorkout(null);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const LiveWorkoutScreen()),
+                  );
+                },
                 isPrimary: true,
               ),
               const SizedBox(height: 40),
@@ -409,7 +431,12 @@ class RoutineCard extends ConsumerWidget {
                   const SizedBox(height: 20),
                   
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      ref.read(liveWorkoutProvider.notifier).startWorkout(routine);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const LiveWorkoutScreen()),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.black,

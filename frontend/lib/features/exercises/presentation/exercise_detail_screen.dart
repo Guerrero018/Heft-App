@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/exercise_model.dart';
 
 class ExerciseDetailScreen extends StatelessWidget {
   final Exercise exercise;
+  final bool showAddButton;
 
-  const ExerciseDetailScreen({super.key, required this.exercise});
+  const ExerciseDetailScreen({
+    super.key,
+    required this.exercise,
+    this.showAddButton = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,64 +30,38 @@ class ExerciseDetailScreen extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  exercise.externalId != null
-                      ? CachedNetworkImage(
-                          imageUrl: 'https://exercisedb.p.rapidapi.com/image?exerciseId=${exercise.externalId}&resolution=360&rapidapi-key=${dotenv.env['EXERCISE_DB_KEY'] ?? ''}',
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Center(
-                            child: CircularProgressIndicator(
-                              color: AppTheme.primaryColor.withOpacity(0.3),
-                            ),
+                  (() {
+                    final imageUrl = exercise.gifUrl;
+
+                    if (imageUrl != null && imageUrl.isNotEmpty) {
+                      return CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Center(
+                          child: CircularProgressIndicator(
+                            color: AppTheme.primaryColor.withOpacity(0.3),
                           ),
-                          errorWidget: (context, url, error) {
-                            return Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    AppTheme.primaryColor.withOpacity(0.2),
-                                    AppTheme.surfaceColor,
-                                  ],
-                                ),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.fitness_center_rounded,
-                                    size: 64,
-                                    color: AppTheme.primaryColor.withOpacity(0.5),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                                    child: Text(
-                                      exercise.name.toUpperCase(),
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.3),
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 2,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        )
-                      : Container(color: AppTheme.cardColor),
+                        ),
+                        errorWidget: (context, url, error) {
+                          debugPrint(
+                            'ERROR: Fallo al cargar imagen ($url): $error',
+                          );
+                          return _buildImageFallback(context);
+                        },
+                      );
+                    }
+                    return _buildImageFallback(context);
+                  })(),
                   // Degradado
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
+                        stops: const [0.9, 0.95, 1.0],
                         colors: [
                           Colors.transparent,
-                          AppTheme.surfaceColor.withOpacity(0.8),
+                          AppTheme.surfaceColor.withOpacity(0.5),
                           AppTheme.surfaceColor,
                         ],
                       ),
@@ -114,9 +92,17 @@ class ExerciseDetailScreen extends StatelessWidget {
                   // ETIQUETAS
                   Row(
                     children: [
-                      _buildTag(exercise.muscleGroup.toUpperCase(), AppTheme.primaryColor),
+                      _buildTag(
+                        exercise.muscleGroup.toUpperCase(),
+                        AppTheme.primaryColor,
+                      ),
                       const SizedBox(width: 12),
-                      _buildTag((exercise.equipment ?? exercise.exerciseType).replaceAll('_', ' ').toUpperCase(), AppTheme.hintColor),
+                      _buildTag(
+                        (exercise.equipment ?? exercise.exerciseType)
+                            .replaceAll('_', ' ')
+                            .toUpperCase(),
+                        AppTheme.hintColor,
+                      ),
                     ],
                   ),
 
@@ -126,7 +112,10 @@ class ExerciseDetailScreen extends StatelessWidget {
                   if (exercise.description.isNotEmpty) ...[
                     const Text(
                       'Sobre este ejercicio',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -147,7 +136,10 @@ class ExerciseDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   if (exercise.instructions.isEmpty)
-                    const Text('No hay instrucciones disponibles.', style: TextStyle(color: AppTheme.hintColor))
+                    const Text(
+                      'No hay instrucciones disponibles.',
+                      style: TextStyle(color: AppTheme.hintColor),
+                    )
                   else
                     ...exercise.instructions.asMap().entries.map((entry) {
                       return Padding(
@@ -195,22 +187,29 @@ class ExerciseDetailScreen extends StatelessWidget {
         ],
       ),
 
-      // BOTÓN AÑADIR
+      // BOTÓN AÑADIR (Solo si se requiere)
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Container(
-        width: double.infinity,
-        height: 60,
-        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-        child: ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(exercise),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
-            foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
-          child: const Text('AÑADIR A RUTINA', style: TextStyle(fontWeight: FontWeight.w900)),
-        ),
-      ),
+      floatingActionButton: showAddButton
+          ? Container(
+              width: double.infinity,
+              height: 60,
+              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(exercise),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'AÑADIR A RUTINA',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            )
+          : null,
     );
   }
 
@@ -222,7 +221,53 @@ class ExerciseDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withOpacity(0.2)),
       ),
-      child: Text(text, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageFallback(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.primaryColor.withOpacity(0.2),
+            AppTheme.surfaceColor,
+          ],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.fitness_center_rounded,
+            size: 64,
+            color: AppTheme.primaryColor.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              exercise.name.toUpperCase(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.3),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
