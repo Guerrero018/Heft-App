@@ -38,7 +38,7 @@ class WorkoutHistoryNotifier extends Notifier<WorkoutHistoryState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final response = await apiClient.get('workouts/', queryParameters: {
-        'ordering': '-date', // Most recent first
+        'ordering': '-start_time', // Most recent first
       });
       
       if (response.data is List) {

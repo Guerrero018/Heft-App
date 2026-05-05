@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../routines/domain/routine_model.dart';
 import '../../../core/api/api_client.dart';
+import '../../workouts/data/workout_provider.dart';
 import 'live_workout_state.dart';
 
 final liveWorkoutProvider = NotifierProvider<LiveWorkoutNotifier, LiveWorkoutState>(() {
@@ -363,21 +364,24 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     }
 
     try {
+      print('DEBUG: Finishing workout. Start: ${savedState.startTime}, End: $endTime');
       final response = await _api.post('workouts/', data: {
         'routine': savedState.routine?.id,
         'name': savedState.sessionName,
-        'start_time': savedState.startTime?.toIso8601String(),
-        'end_time': endTime.toIso8601String(),
+        'start_time': savedState.startTime?.toUtc().toIso8601String(),
+        'end_time': endTime.toUtc().toIso8601String(),
         'is_completed': true,
         'sets': sets,
       });
       
       print('Workout saved successfully: ${response.data}');
+      
+      // Refresh history immediately so the new workout appears at the top
+      ref.read(workoutHistoryProvider.notifier).fetchWorkouts();
+      
       state = LiveWorkoutState(); // Reset state
     } catch (e) {
       print('Error finishing workout: $e');
-      // If error, we might want to restore isActive=true so they can retry?
-      // For now, just reset to avoid stuck state
       state = LiveWorkoutState();
     }
   }
