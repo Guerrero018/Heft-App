@@ -73,10 +73,7 @@ class ActiveExercise {
   final RoutineExercise routineExercise;
   final List<WorkoutSetData> sets;
 
-  ActiveExercise({
-    required this.routineExercise,
-    required this.sets,
-  });
+  ActiveExercise({required this.routineExercise, required this.sets});
 
   ActiveExercise copyWith({
     RoutineExercise? routineExercise,
@@ -96,7 +93,7 @@ class LiveWorkoutState {
   final DateTime? startTime;
   final int elapsedSeconds;
   final List<ActiveExercise> activeExercises;
-  
+
   // Timer for resting
   final bool isResting;
   final int restSecondsRemaining;
