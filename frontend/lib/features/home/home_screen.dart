@@ -507,11 +507,11 @@ class RoutineCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Extraer grupos musculares únicos para el subtitulo
+    // Extraer grupos musculares únicos para mostrar como etiquetas
     final muscleGroups = routine.exercises
         .map((e) => _translateMuscle(e.muscleGroup))
         .toSet()
-        .join(', ');
+        .toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -553,15 +553,36 @@ class RoutineCard extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    muscleGroups.isEmpty ? 'Sin ejercicios' : muscleGroups,
-                    style: const TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                  const SizedBox(height: 8),
+                  if (muscleGroups.isEmpty)
+                    const Text(
+                      'Sin ejercicios',
+                      style: TextStyle(
+                        color: AppTheme.hintColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: muscleGroups.map((muscle) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          muscle.toUpperCase(),
+                          style: const TextStyle(
+                            color: AppTheme.primaryColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )).toList(),
                     ),
-                  ),
                   const SizedBox(height: 16),
 
                   // Resumen de ejercicios

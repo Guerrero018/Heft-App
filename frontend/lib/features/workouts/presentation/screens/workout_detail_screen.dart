@@ -24,6 +24,7 @@ class WorkoutDetailScreen extends StatelessWidget {
             backgroundColor: AppTheme.surfaceColor,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
+              centerTitle: true,
               title: Text(
                 workout.name.isEmpty ? 'Entrenamiento' : workout.name,
                 style: const TextStyle(
@@ -203,10 +204,11 @@ class _ExerciseDetailCard extends StatelessWidget {
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             exerciseName,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
@@ -217,7 +219,7 @@ class _ExerciseDetailCard extends StatelessWidget {
           // Table header
           Row(
             children: [
-              const SizedBox(width: 30, child: Text('SERIE', style: TextStyle(color: AppTheme.hintColor, fontSize: 10))),
+              const Expanded(child: Center(child: Text('SERIE', style: TextStyle(color: AppTheme.hintColor, fontSize: 10)))),
               const Expanded(child: Center(child: Text('PESO', style: TextStyle(color: AppTheme.hintColor, fontSize: 10)))),
               const Expanded(child: Center(child: Text('REPS', style: TextStyle(color: AppTheme.hintColor, fontSize: 10)))),
               if (sets.any((s) => s.rpe != null))
@@ -229,11 +231,12 @@ class _ExerciseDetailCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
-                SizedBox(
-                  width: 30, 
-                  child: Text(
-                    '${s.setNumber}', 
-                    style: const TextStyle(color: AppTheme.hintColor, fontWeight: FontWeight.bold)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '${s.setNumber}', 
+                      style: const TextStyle(color: AppTheme.hintColor, fontWeight: FontWeight.bold)
+                    ),
                   )
                 ),
                 Expanded(child: Center(child: Text('${s.weight.toString().replaceAll(RegExp(r'\.0$'), '')} kg', style: const TextStyle(color: Colors.white)))),
