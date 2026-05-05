@@ -6,6 +6,9 @@ import '../../../routines/domain/routine_model.dart';
 import '../../domain/live_workout_provider.dart';
 import '../../domain/live_workout_state.dart';
 import '../../../exercises/presentation/exercise_catalog_screen.dart';
+import '../../../exercises/presentation/exercise_detail_screen.dart';
+import '../../../exercises/domain/exercise_model.dart';
+import '../../../exercises/data/exercise_provider.dart';
 
 class LiveWorkoutScreen extends ConsumerWidget {
   const LiveWorkoutScreen({super.key});
@@ -227,12 +230,13 @@ class LiveWorkoutScreen extends ConsumerWidget {
               const Center(
                 child: CircularProgressIndicator(color: AppTheme.primaryColor),
               )
-            else if (state.activeExercises.isEmpty)
-              _buildEmptyState(context)
             else
               ListView(
                 padding: const EdgeInsets.only(bottom: 60, top: 16),
                 children: [
+                  if (state.activeExercises.isEmpty)
+                    _buildEmptyState(context),
+                  
                   ...state.activeExercises.asMap().entries.map((entry) {
                     return _ActiveExerciseCard(
                       exerciseIndex: entry.key,
@@ -676,13 +680,56 @@ class _ActiveExerciseCard extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  exercise.routineExercise.exerciseName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                  ),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        exercise.routineExercise.exerciseName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: () async {
+                        // Fetch full exercise details
+                        final fullExercise = await ref
+                            .read(exerciseProvider.notifier)
+                            .fetchExerciseById(exercise.routineExercise.exerciseId);
+
+                        if (context.mounted) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => ExerciseDetailScreen(
+                                exercise: fullExercise ??
+                                    Exercise(
+                                      id: exercise.routineExercise.exerciseId,
+                                      name: exercise.routineExercise.exerciseName,
+                                      muscleGroup: exercise.routineExercise.muscleGroup,
+                                      gifUrl: exercise.routineExercise.gifUrl,
+                                      externalId: exercise.routineExercise.externalId,
+                                      exerciseType: 'otro',
+                                      isGlobal: true,
+                                    ),
+                                showAddButton: false,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      icon: Icon(
+                        Icons.info_outline_rounded,
+                        size: 16,
+                        color: AppTheme.hintColor.withOpacity(0.4),
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
                 ),
               ),
               IconButton(

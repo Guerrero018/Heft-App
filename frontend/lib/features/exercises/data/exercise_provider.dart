@@ -85,6 +85,15 @@ class ExerciseNotifier extends Notifier<ExerciseState> {
       rethrow;
     }
   }
+
+  Future<Exercise?> fetchExerciseById(int id) async {
+    try {
+      final response = await apiClient.get('exercises/$id/');
+      return Exercise.fromJson(response.data);
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 final exerciseProvider = NotifierProvider<ExerciseNotifier, ExerciseState>(() {
