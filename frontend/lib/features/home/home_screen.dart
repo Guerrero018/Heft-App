@@ -32,17 +32,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final liveWorkoutState = ref.watch(liveWorkoutProvider);
-    
+
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (liveWorkoutState.isActive)
-            const _MinimizedWorkoutBar(),
+          if (liveWorkoutState.isActive) const _MinimizedWorkoutBar(),
           BottomNavigationBar(
             currentIndex: _currentIndex,
             onTap: (index) {
@@ -76,8 +72,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-
-
 class _InicioTab extends ConsumerWidget {
   const _InicioTab();
 
@@ -104,7 +98,10 @@ class _InicioTab extends ConsumerWidget {
                     children: [
                       const Text(
                         'Hola de nuevo, ',
-                        style: TextStyle(color: AppTheme.hintColor, fontSize: 14),
+                        style: TextStyle(
+                          color: AppTheme.hintColor,
+                          fontSize: 14,
+                        ),
                       ),
                       Text(
                         ref.watch(authProvider).user?['username'] ?? '',
@@ -119,10 +116,16 @@ class _InicioTab extends ConsumerWidget {
                   IconButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const ExerciseCatalogScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const ExerciseCatalogScreen(),
+                        ),
                       );
                     },
-                    icon: Icon(Icons.fitness_center_rounded, color: AppTheme.hintColor.withOpacity(0.4), size: 20),
+                    icon: Icon(
+                      Icons.fitness_center_rounded,
+                      color: AppTheme.hintColor.withOpacity(0.4),
+                      size: 20,
+                    ),
                     tooltip: 'Biblioteca de ejercicios',
                   ),
                 ],
@@ -147,7 +150,9 @@ class _InicioTab extends ConsumerWidget {
                 onTap: () {
                   ref.read(liveWorkoutProvider.notifier).startWorkout(null);
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const LiveWorkoutScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const LiveWorkoutScreen(),
+                    ),
                   );
                 },
                 isPrimary: true,
@@ -158,12 +163,14 @@ class _InicioTab extends ConsumerWidget {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                          builder: (context) => const WorkoutHistoryScreen()),
+                        builder: (context) => const WorkoutHistoryScreen(),
+                      ),
                     );
                   },
-                  icon: Icon(Icons.history_rounded, 
-                    size: 18, 
-                    color: AppTheme.hintColor.withOpacity(0.5)
+                  icon: Icon(
+                    Icons.history_rounded,
+                    size: 18,
+                    color: AppTheme.hintColor.withOpacity(0.5),
                   ),
                   label: Text(
                     'Ver historial de entrenamientos',
@@ -174,7 +181,10 @@ class _InicioTab extends ConsumerWidget {
                     ),
                   ),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                   ),
                 ),
               ),
@@ -195,10 +205,15 @@ class _InicioTab extends ConsumerWidget {
                   IconButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const CreateRoutineScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const CreateRoutineScreen(),
+                        ),
                       );
                     },
-                    icon: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.primaryColor),
+                    icon: const Icon(
+                      Icons.add_circle_outline_rounded,
+                      color: AppTheme.primaryColor,
+                    ),
                   ),
                 ],
               ),
@@ -208,7 +223,9 @@ class _InicioTab extends ConsumerWidget {
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(40.0),
-                    child: CircularProgressIndicator(color: AppTheme.primaryColor),
+                    child: CircularProgressIndicator(
+                      color: AppTheme.primaryColor,
+                    ),
                   ),
                 )
               else if (routineState.routines.isEmpty)
@@ -218,12 +235,13 @@ class _InicioTab extends ConsumerWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: routineState.routines.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 16),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     return RoutineCard(routine: routineState.routines[index]);
                   },
                 ),
-                
+
               const SizedBox(height: 24),
             ],
           ),
@@ -232,7 +250,8 @@ class _InicioTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionCard(BuildContext context, {
+  Widget _buildActionCard(
+    BuildContext context, {
     required String title,
     required String subtitle,
     required IconData icon,
@@ -245,10 +264,14 @@ class _InicioTab extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isPrimary ? AppTheme.primaryColor.withOpacity(0.1) : Theme.of(context).cardColor,
+          color: isPrimary
+              ? AppTheme.primaryColor.withOpacity(0.1)
+              : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isPrimary ? AppTheme.primaryColor.withOpacity(0.3) : Colors.white.withOpacity(0.05),
+            color: isPrimary
+                ? AppTheme.primaryColor.withOpacity(0.3)
+                : Colors.white.withOpacity(0.05),
             width: 1,
           ),
         ),
@@ -257,7 +280,9 @@ class _InicioTab extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isPrimary ? AppTheme.primaryColor : Colors.white.withOpacity(0.05),
+                color: isPrimary
+                    ? AppTheme.primaryColor
+                    : Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Icon(
@@ -274,22 +299,24 @@ class _InicioTab extends ConsumerWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: isPrimary ? AppTheme.primaryColor : AppTheme.textColor,
+                      color: isPrimary
+                          ? AppTheme.primaryColor
+                          : AppTheme.textColor,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      color: AppTheme.hintColor,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: AppTheme.hintColor, fontSize: 13),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: AppTheme.hintColor.withOpacity(0.5)),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: AppTheme.hintColor.withOpacity(0.5),
+            ),
           ],
         ),
       ),
@@ -307,11 +334,18 @@ class _InicioTab extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          Icon(Icons.fitness_center_rounded, size: 48, color: AppTheme.hintColor.withOpacity(0.2)),
+          Icon(
+            Icons.fitness_center_rounded,
+            size: 48,
+            color: AppTheme.hintColor.withOpacity(0.2),
+          ),
           const SizedBox(height: 16),
           const Text(
             'No tienes rutinas todavía',
-            style: TextStyle(color: AppTheme.textColor, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: AppTheme.textColor,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -330,25 +364,137 @@ class RoutineCard extends ConsumerWidget {
 
   const RoutineCard({super.key, required this.routine});
 
+  void _showRoutineOptions(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A).withOpacity(0.95),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              routine.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildOptionItem(
+              icon: Icons.play_arrow_rounded,
+              title: 'Iniciar entrenamiento',
+              onTap: () {
+                Navigator.pop(context);
+                ref.read(liveWorkoutProvider.notifier).startWorkout(routine);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const LiveWorkoutScreen()),
+                );
+              },
+              color: AppTheme.primaryColor,
+            ),
+            _buildOptionItem(
+              icon: Icons.edit_outlined,
+              title: 'Editar rutina',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => CreateRoutineScreen(existingRoutine: routine),
+                  ),
+                );
+              },
+            ),
+            _buildOptionItem(
+              icon: Icons.delete_outline_rounded,
+              title: 'Eliminar rutina',
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDelete(context, ref);
+              },
+              color: Colors.redAccent,
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color color = Colors.white,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color, size: 22),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: color,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+    );
+  }
+
   void _confirmDelete(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surfaceColor,
-        title: const Text('Eliminar Rutina', style: TextStyle(color: Colors.white)),
-        content: Text('¿Estás seguro de que deseas eliminar la rutina "${routine.name}"?',
-            style: const TextStyle(color: AppTheme.hintColor)),
+        title: const Text(
+          'Eliminar Rutina',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          '¿Estás seguro de que deseas eliminar la rutina "${routine.name}"?',
+          style: const TextStyle(color: AppTheme.hintColor),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: AppTheme.hintColor)),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.hintColor),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
               ref.read(routineProvider.notifier).deleteRoutine(routine.id!);
             },
-            child: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -393,96 +539,98 @@ class RoutineCard extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert, color: AppTheme.hintColor, size: 20),
-                        color: AppTheme.cardColor,
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => CreateRoutineScreen(existingRoutine: routine),
-                              ),
-                            );
-                          } else if (value == 'delete') {
-                            _confirmDelete(context, ref);
-                          }
-                        },
-                        itemBuilder: (BuildContext context) => [
-                          const PopupMenuItem<String>(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, color: AppTheme.textColor, size: 18),
-                                SizedBox(width: 8),
-                                Text('Editar', style: TextStyle(color: AppTheme.textColor)),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem<String>(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, color: Colors.redAccent, size: 18),
-                                SizedBox(width: 8),
-                                Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
-                              ],
-                            ),
-                          ),
-                        ],
+                      IconButton(
+                        icon: const Icon(
+                          Icons.more_vert,
+                          color: AppTheme.hintColor,
+                          size: 20,
+                        ),
+                        onPressed: () => _showRoutineOptions(context, ref),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     muscleGroups.isEmpty ? 'Sin ejercicios' : muscleGroups,
-                    style: const TextStyle(color: AppTheme.primaryColor, fontSize: 13, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Resumen de ejercicios
                   if (routine.exercises.isNotEmpty) ...[
-                    ...routine.exercises.take(3).map((e) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        children: [
-                          Icon(Icons.circle, size: 6, color: AppTheme.hintColor.withOpacity(0.5)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '${e.targetSets} x ${e.exerciseName}',
-                              style: TextStyle(color: AppTheme.textColor.withOpacity(0.7), fontSize: 14),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
+                    ...routine.exercises
+                        .take(3)
+                        .map(
+                          (e) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.circle,
+                                  size: 6,
+                                  color: AppTheme.hintColor.withOpacity(0.5),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${e.targetSets} x ${e.exerciseName}',
+                                    style: TextStyle(
+                                      color: AppTheme.textColor.withOpacity(
+                                        0.7,
+                                      ),
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    )),
+                        ),
                     if (routine.exercises.length > 3)
                       Text(
                         '+ ${routine.exercises.length - 3} más...',
-                        style: const TextStyle(color: AppTheme.hintColor, fontSize: 12),
+                        style: const TextStyle(
+                          color: AppTheme.hintColor,
+                          fontSize: 12,
+                        ),
                       ),
                   ],
 
-                  
                   const SizedBox(height: 20),
-                  
+
                   ElevatedButton(
                     onPressed: () {
-                      ref.read(liveWorkoutProvider.notifier).startWorkout(routine);
+                      ref
+                          .read(liveWorkoutProvider.notifier)
+                          .startWorkout(routine);
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const LiveWorkoutScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const LiveWorkoutScreen(),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.black,
                       minimumSize: const Size(double.infinity, 45),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 0,
                     ),
-                    child: const Text('EMPEZAR RUTINA', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                    child: const Text(
+                      'EMPEZAR RUTINA',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -527,7 +675,10 @@ class _MinimizedWorkoutBar extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surfaceColor,
-        title: const Text('¿Descartar entrenamiento?', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          '¿Descartar entrenamiento?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'Se perderá todo el progreso de esta sesión.',
           style: TextStyle(color: AppTheme.hintColor),
@@ -558,8 +709,8 @@ class _MinimizedWorkoutBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(liveWorkoutProvider);
-    final lastExercise = state.activeExercises.isNotEmpty 
-        ? state.activeExercises.last.routineExercise.exerciseName 
+    final lastExercise = state.activeExercises.isNotEmpty
+        ? state.activeExercises.last.routineExercise.exerciseName
         : 'Entrenamiento';
 
     return Container(
@@ -600,7 +751,7 @@ class _MinimizedWorkoutBar extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 12),
-            
+
             // Info
             Expanded(
               child: Column(
@@ -619,7 +770,9 @@ class _MinimizedWorkoutBar extends ConsumerWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        state.sessionName.isEmpty ? 'Entrenamiento' : state.sessionName,
+                        state.sessionName.isEmpty
+                            ? 'Entrenamiento'
+                            : state.sessionName,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -650,7 +803,7 @@ class _MinimizedWorkoutBar extends ConsumerWidget {
                 ],
               ),
             ),
-            
+
             // Discard Button
             IconButton(
               onPressed: () => _confirmCancel(context, ref),
