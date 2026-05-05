@@ -7,9 +7,11 @@ import 'features/home/home_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('es', null);
   await dotenv.load(fileName: ".env");
   runApp(const ProviderScope(child: HeftApp()));
 }

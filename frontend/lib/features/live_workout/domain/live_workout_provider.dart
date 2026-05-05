@@ -366,6 +366,7 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
       final response = await _api.post('workouts/', data: {
         'routine': savedState.routine?.id,
         'name': savedState.sessionName,
+        'start_time': savedState.startTime?.toIso8601String(),
         'end_time': endTime.toIso8601String(),
         'is_completed': true,
         'sets': sets,

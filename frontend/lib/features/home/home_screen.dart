@@ -11,6 +11,7 @@ import '../exercises/presentation/exercise_catalog_screen.dart';
 import '../live_workout/domain/live_workout_provider.dart';
 import '../live_workout/presentation/screens/live_workout_screen.dart';
 import '../statistics/presentation/statistics_screen.dart';
+import '../workouts/presentation/screens/workout_history_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -151,7 +152,33 @@ class _InicioTab extends ConsumerWidget {
                 },
                 isPrimary: true,
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (context) => const WorkoutHistoryScreen()),
+                    );
+                  },
+                  icon: Icon(Icons.history_rounded, 
+                    size: 18, 
+                    color: AppTheme.hintColor.withOpacity(0.5)
+                  ),
+                  label: Text(
+                    'Ver historial de entrenamientos',
+                    style: TextStyle(
+                      color: AppTheme.hintColor.withOpacity(0.7),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
 
               // Sección de Rutinas
               Row(

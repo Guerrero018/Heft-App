@@ -18,7 +18,7 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutSession
         fields = ['id', 'routine', 'routine_name', 'name', 'date', 'start_time', 'end_time', 'notes', 'is_completed', 'sets']
-        read_only_fields = ('user', 'start_time')
+        read_only_fields = ('user',)
 
     def create(self, validated_data):
         sets_data = validated_data.pop('sets', [])
