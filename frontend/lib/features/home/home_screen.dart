@@ -113,20 +113,53 @@ class _InicioTab extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const ExerciseCatalogScreen(),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const WorkoutHistoryScreen(),
+                            ),
+                          );
+                        },
+                        icon: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.history_rounded,
+                            color: AppTheme.primaryColor.withOpacity(0.9),
+                            size: 22,
+                          ),
                         ),
-                      );
-                    },
-                    icon: Icon(
-                      Icons.fitness_center_rounded,
-                      color: AppTheme.hintColor.withOpacity(0.4),
-                      size: 20,
-                    ),
-                    tooltip: 'Biblioteca de ejercicios',
+                        tooltip: 'Historial',
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const ExerciseCatalogScreen(),
+                            ),
+                          );
+                        },
+                        icon: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.fitness_center_rounded,
+                            color: AppTheme.primaryColor.withOpacity(0.9),
+                            size: 22,
+                          ),
+                        ),
+                        tooltip: 'Biblioteca de ejercicios',
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -158,36 +191,7 @@ class _InicioTab extends ConsumerWidget {
                 isPrimary: true,
               ),
               const SizedBox(height: 8),
-              Center(
-                child: TextButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const WorkoutHistoryScreen(),
-                      ),
-                    );
-                  },
-                  icon: Icon(
-                    Icons.history_rounded,
-                    size: 18,
-                    color: AppTheme.hintColor.withOpacity(0.5),
-                  ),
-                  label: Text(
-                    'Ver historial de entrenamientos',
-                    style: TextStyle(
-                      color: AppTheme.hintColor.withOpacity(0.7),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                  ),
-                ),
-              ),
+
               const SizedBox(height: 32),
 
               // Sección de Rutinas
