@@ -55,6 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   height: 200,
                   width: 200,
                   decoration: BoxDecoration(
+                    color: AppTheme.surfaceColor,
                     borderRadius: BorderRadius.circular(40),
                     boxShadow: [
                       BoxShadow(
@@ -67,7 +68,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(40),
                     child: Image.asset(
-                      'assets/images/logo.png',
+                      'assets/images/HeftLogo.png',
                       fit: BoxFit.cover,
                     ),
                   ),
