@@ -110,12 +110,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       height: 160,
                       width: 160,
                       decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor,
                         borderRadius: BorderRadius.circular(32),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(32),
                         child: Image.asset(
-                          'assets/images/logo.png',
+                          'assets/images/HeftLogo.png',
                           fit: BoxFit.cover,
                         ),
                       ),
