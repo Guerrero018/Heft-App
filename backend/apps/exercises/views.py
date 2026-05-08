@@ -16,48 +16,81 @@ class ExerciseViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], pagination_class=None)
     def popular(self, request):
         """
-        Devuelve una lista masiva y curada basada en palabras clave y grupos musculares reales.
+        Devuelve el catálogo de populares utilizando NOMBRES LITERALES Y EXACTOS extraídos de la BD.
+        Garantiza que siempre aparezcan ejercicios de todos los grupos musculares.
         """
-        # Definimos los 'imprescindibles' por grupo muscular real de la DB
-        categories = {
-            'pecho': ['Banca', 'Apertura', 'Polea', 'Flexi', 'Dips'],
-            'espalda': ['Remo', 'Dominada', 'Jalón', 'Jalon', 'Pull', 'Lumbares'],
-            'isquiotibiales': ['Curl de pierna', 'Femoral', 'Peso muerto', 'Isquio', 'Buenos días'],
-            'cuadriceps': ['Sentadilla', 'Prensa', 'Extensión', 'Extension', 'Zancada', 'Hack'],
-            'hombros': ['Militar', 'Press de hombro', 'Lateral', 'Frontal', 'Face pull', 'Pájaro'],
-            'biceps': ['Curl', 'Martillo', 'Scott', 'Bíceps'],
-            'triceps': ['Francés', 'Frances', 'Tríceps', 'Polea', 'Extensión'],
-            'gluteos': ['Hip thrust', 'Glúteo', 'Abducción', 'Patada'],
-            'abdominales': ['Crunch', 'Plancha', 'Plank', 'Piernas', 'Rueda']
-        }
-        
-        popular_exercises = []
-        seen_ids = set()
-        
-        # Estrategia: Por cada categoría, buscamos sus palabras clave
-        for muscle, keywords in categories.items():
-            category_matches = []
-            for kw in keywords:
-                # Buscamos que coincida el grupo Y la palabra clave
-                matches = Exercise.objects.filter(
-                    muscle_group=muscle,
-                    name__icontains=kw,
-                    is_global=True
-                )[:3] # Cogemos hasta 3 por palabra clave para variedad
-                
-                for ex in matches:
-                    if ex.id not in seen_ids:
-                        category_matches.append(ex)
-                        seen_ids.add(ex.id)
+        exact_famous_exercises = [
+            # PECHO
+            'Press de banca con barra',
+            'Press inclinado con mancuernas',
+            'Press declinado en polea',
+            'Aperturas en polea baja',
+            'Cruces de poleas de pie (recto)',
+            'Flexiones profundas',
+            'Fondos de pecho',
             
-            # Añadimos los de esta categoría a la lista global
-            popular_exercises.extend(category_matches)
+            # ESPALDA
+            'Dominada',
+            'Dominada con agarre ancho',
+            'Remo con barra inclinado',
+            'Remo sentado en polea',
+            'Remo a una mano con cable inclinado',
+            'Pullover con barra',
+            'Remo en barra t en máquina de palanca',
+            'Jalón inclinado en polea con brazos rectos',
+            
+            # CUÁDRICEPS Y GLÚTEO
+            'Sentadilla frontal con barra en banco',
+            'Sentadilla goblet con mancuerna',
+            'Prensa de piernas en trineo a 45°',
+            'Sentadilla hack en trineo',
+            'Zancadas caminando',
+            'Patada trasera con cable',
+            'Deslizamiento en plataforma a una pierna',
+            
+            # ISQUIOTIBIALES (FEMORAL)
+            'Peso muerto con barra',
+            'Peso muerto rumano con barra',
+            'Curl de piernas sentado en máquina de palanca',
+            'Curl de piernas tumbado en máquina de palanca',
+            'Femoral tumbado con mancuerna',
+            'Buenos días con barra',
+            
+            # HOMBROS
+            'Press militar con barra sentado tras nuca',
+            'Press de hombros sentado con mancuerna',
+            'Elevaciones laterales posteriores con mancuernas',
+            'Elevación de hombros con barra en banco inclinado',
+            'Remo invertido',
+            
+            # BRAZOS (BÍCEPS Y TRÍCEPS)
+            'Curl con barra ez',
+            'Curl con barra agarre cerrado de pie',
+            'Curl martillo prono a una mano',
+            'Curl predicador con barra',
+            'Curl concentrado con banda',
+            'Extensión de tríceps',
+            'Fondos de pecho asistidos (de rodillas)',
+            
+            # CORE Y GEMELOS
+            'Crunch con peso',
+            'Plancha frontal con giro',
+            'Despliegue de rueda abdominal de pie',
+            'Prensa de gemelos en trineo a 45°',
+            'Elevación de talones de pie con mancuernas'
+        ]
         
-        # Si por algún motivo extremo la lista sigue siendo corta, rellenamos con globales
-        if len(popular_exercises) < 50:
-            additional = Exercise.objects.filter(is_global=True).exclude(id__in=seen_ids)[:30]
+        # Obtenemos TODOS los ejercicios que coincidan exactamente con nuestra lista maestra
+        popular_exercises = list(Exercise.objects.filter(
+            name__in=exact_famous_exercises,
+            is_global=True
+        ))
+        
+        # Por si el usuario ha borrado alguno, rellenamos hasta llegar a 40 con ejercicios globales variados
+        if len(popular_exercises) < 40:
+            seen_ids = [e.id for e in popular_exercises]
+            additional = Exercise.objects.filter(is_global=True).exclude(id__in=seen_ids)[:(40 - len(popular_exercises))]
             popular_exercises.extend(additional)
 
-        # Retornamos los resultados (limitamos a 150 para no saturar)
-        serializer = self.get_serializer(popular_exercises[:150], many=True)
+        serializer = self.get_serializer(popular_exercises, many=True)
         return Response(serializer.data)
