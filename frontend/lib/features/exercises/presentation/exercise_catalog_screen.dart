@@ -228,7 +228,7 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                           ),
                         ),
                         SizedBox(
-                          height: 120,
+                          height: 130, // Aumentado ligeramente para acomodar la imagen
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -251,9 +251,9 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                                   }
                                 },
                                 child: Container(
-                                  width: 160,
+                                  width: 170, // Un poco más ancho
                                   margin: const EdgeInsets.only(right: 12),
-                                  padding: const EdgeInsets.all(16),
+                                  padding: const EdgeInsets.all(12), // Reducido un poco el padding interno
                                   decoration: BoxDecoration(
                                     color: AppTheme.cardColor,
                                     borderRadius: BorderRadius.circular(20),
@@ -263,11 +263,34 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        e.name,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Container(
+                                              width: 40,
+                                              height: 40,
+                                              color: AppTheme.surfaceColor,
+                                              child: e.gifUrl != null && e.gifUrl!.isNotEmpty
+                                                  ? Image.network(
+                                                      e.gifUrl!,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.fitness_center, color: AppTheme.primaryColor, size: 20),
+                                                    )
+                                                  : const Icon(Icons.fitness_center, color: AppTheme.primaryColor, size: 20),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              e.name,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -307,6 +330,21 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                           children: [
                             ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                              leading: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  width: 50,
+                                  height: 50,
+                                  color: AppTheme.cardColor,
+                                  child: e.gifUrl != null && e.gifUrl!.isNotEmpty
+                                      ? Image.network(
+                                          e.gifUrl!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.fitness_center, color: AppTheme.primaryColor, size: 24),
+                                        )
+                                      : const Icon(Icons.fitness_center, color: AppTheme.primaryColor, size: 24),
+                                ),
+                              ),
                               title: Text(e.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                               subtitle: Padding(
                                 padding: const EdgeInsets.only(top: 4),
