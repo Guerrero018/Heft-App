@@ -89,6 +89,7 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
       ),
       body: Column(
         children: [
+          // Sección FIJA: Buscador y Filtros
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: Row(
@@ -192,175 +193,190 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
 
           const SizedBox(height: 8),
           
-          if (state.popularExercises.isNotEmpty && _searchQuery.isEmpty && !_onlyPopular && _selectedMuscle == 'all' && _selectedEquipment == 'all') ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.local_fire_department_outlined, color: AppTheme.primaryColor, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'Más Populares',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  TextButton(
-                    onPressed: () => setState(() => _onlyPopular = true),
-                    child: const Text('Ver todos', style: TextStyle(color: AppTheme.primaryColor, fontSize: 12)),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: 120,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                itemCount: state.popularExercises.length,
-                itemBuilder: (context, index) {
-                  final e = state.popularExercises[index];
-                  return GestureDetector(
-                    onTap: () {
-                      if (widget.isSelectionMode) {
-                        Navigator.of(context).pop(e);
-                      } else {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => ExerciseDetailScreen(
-                              exercise: e,
-                              showAddButton: false,
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      width: 160,
-                      margin: const EdgeInsets.only(right: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2), width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            e.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              e.muscleGroup.toUpperCase(),
-                              style: const TextStyle(fontSize: 9, color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
           const Divider(height: 1, color: Colors.white10),
 
+          // Sección SCROLLABLE
           Expanded(
-            child: state.isLoading 
-              ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
-              : ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: filtered.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.white10, indent: 24, endIndent: 24),
-                  itemBuilder: (context, index) {
-                    final e = filtered[index];
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      title: Text(e.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
+            child: CustomScrollView(
+              slivers: [
+                // Carrusel de populares (Solo se muestra si cumple las condiciones)
+                if (state.popularExercises.isNotEmpty && _searchQuery.isEmpty && !_onlyPopular && _selectedMuscle == 'all' && _selectedEquipment == 'all')
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.local_fire_department_outlined, color: AppTheme.primaryColor, size: 20),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Más Populares',
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                                ],
                               ),
-                              child: Text(
-                                e.muscleGroup.toUpperCase(),
-                                style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                e.exerciseType.replaceAll('_', ' ').toUpperCase(),
-                                style: TextStyle(color: AppTheme.hintColor.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                            if (!e.isGlobal) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.blueAccent.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'MÍO',
-                                  style: TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.bold),
-                                ),
+                              TextButton(
+                                onPressed: () => setState(() => _onlyPopular = true),
+                                child: const Text('Ver todos', style: TextStyle(color: AppTheme.primaryColor, fontSize: 12)),
                               ),
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white10, size: 16),
-                      onTap: () {
-                        if (widget.isSelectionMode) {
-                          Navigator.of(context).pop(e);
-                        } else {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => ExerciseDetailScreen(
-                                exercise: e,
-                                showAddButton: false,
+                        SizedBox(
+                          height: 120,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            itemCount: state.popularExercises.length,
+                            itemBuilder: (context, index) {
+                              final e = state.popularExercises[index];
+                              return GestureDetector(
+                                onTap: () {
+                                  if (widget.isSelectionMode) {
+                                    Navigator.of(context).pop(e);
+                                  } else {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => ExerciseDetailScreen(
+                                          exercise: e,
+                                          showAddButton: false,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Container(
+                                  width: 160,
+                                  margin: const EdgeInsets.only(right: 12),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.cardColor,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2), width: 1),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        e.name,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          e.muscleGroup.toUpperCase(),
+                                          style: const TextStyle(fontSize: 9, color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Divider(height: 1, color: Colors.white10),
+                      ],
+                    ),
+                  ),
+
+                // Listado principal
+                if (state.isLoading)
+                  const SliverFillRemaining(
+                    child: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+                  )
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final e = filtered[index];
+                        return Column(
+                          children: [
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                              title: Text(e.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        e.muscleGroup.toUpperCase(),
+                                        style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.05),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        e.exerciseType.replaceAll('_', ' ').toUpperCase(),
+                                        style: TextStyle(color: AppTheme.hintColor.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                    if (!e.isGlobal) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blueAccent.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Text(
+                                          'MÍO',
+                                          style: TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
+                              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white10, size: 16),
+                              onTap: () {
+                                if (widget.isSelectionMode) {
+                                  Navigator.of(context).pop(e);
+                                } else {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => ExerciseDetailScreen(
+                                        exercise: e,
+                                        showAddButton: false,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
                             ),
-                          );
-                        }
+                            const Divider(height: 1, color: Colors.white10, indent: 24, endIndent: 24),
+                          ],
+                        );
                       },
-                    );
-                  },
-                ),
+                      childCount: filtered.length,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
