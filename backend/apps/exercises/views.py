@@ -16,81 +16,62 @@ class ExerciseViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], pagination_class=None)
     def popular(self, request):
         """
-        Devuelve el catálogo de populares utilizando NOMBRES LITERALES Y EXACTOS extraídos de la BD.
-        Garantiza que siempre aparezcan ejercicios de todos los grupos musculares.
+        Devuelve el catálogo de populares utilizando búsqueda 'Fuzzy' ultrarrobusta.
+        Ignora errores de tildes o diferencias entre la BD local y la de producción.
         """
-        exact_famous_exercises = [
+        # Formato: (fragmento_grupo_muscular, [palabras_clave_del_ejercicio])
+        robust_search_map = [
             # PECHO
-            'Press de banca con barra',
-            'Press inclinado con mancuernas',
-            'Press declinado en polea',
-            'Aperturas en polea baja',
-            'Cruces de poleas de pie (recto)',
-            'Flexiones profundas',
-            'Fondos de pecho',
-            
+            ('pecho', ['banca', 'inclinad', 'declinad', 'apertura', 'cruce', 'flexion', 'fondo']),
             # ESPALDA
-            'Dominada',
-            'Dominada con agarre ancho',
-            'Remo con barra inclinado',
-            'Remo sentado en polea',
-            'Remo a una mano con cable inclinado',
-            'Pullover con barra',
-            'Remo en barra t en máquina de palanca',
-            'Jalón inclinado en polea con brazos rectos',
-            
-            # CUÁDRICEPS Y GLÚTEO
-            'Sentadilla frontal con barra en banco',
-            'Sentadilla goblet con mancuerna',
-            'Prensa de piernas en trineo a 45°',
-            'Sentadilla hack en trineo',
-            'Zancadas caminando',
-            'Patada trasera con cable',
-            'Deslizamiento en plataforma a una pierna',
-            
-            # ISQUIOTIBIALES (FEMORAL)
-            'Peso muerto con barra',
-            'Peso muerto rumano con barra',
-            'Curl de piernas sentado en máquina de palanca',
-            'Curl de piernas tumbado en máquina de palanca',
-            'Femoral tumbado con mancuerna',
-            'Buenos días con barra',
-            
+            ('espalda', ['dominada', 'remo', 'jalon', 'jalón', 'pullover']),
+            # CUÁDRICEPS / PIERNA
+            ('cuadriceps', ['sentadilla', 'prensa', 'extension', 'extensión', 'zancada', 'hack', 'bulgara', 'búlgara']),
+            # ISQUIOTIBIALES / FEMORAL (Búsqueda súper amplia)
+            ('isquio', ['curl', 'peso muerto', 'femoral', 'buenos dias', 'buenos días']),
+            ('femo', ['curl', 'peso muerto']), 
+            # GLÚTEOS
+            ('gluteo', ['hip thrust', 'patada', 'abducci', 'puente']),
             # HOMBROS
-            'Press militar con barra sentado tras nuca',
-            'Press de hombros sentado con mancuerna',
-            'Elevaciones laterales posteriores con mancuernas',
-            'Elevación de hombros con barra en banco inclinado',
-            'Remo invertido',
-            
+            ('hombro', ['militar', 'lateral', 'frontal', 'pajaro', 'pájaro', 'face pull']),
             # BRAZOS (BÍCEPS Y TRÍCEPS)
-            'Curl con barra ez',
-            'Curl con barra agarre cerrado de pie',
-            'Curl martillo prono a una mano',
-            'Curl predicador con barra',
-            'Curl concentrado con banda',
-            'Extensión de tríceps',
-            'Fondos de pecho asistidos (de rodillas)',
-            
+            ('biceps', ['curl', 'martillo', 'scott', 'predicador']),
+            ('triceps', ['frances', 'francés', 'extension', 'extensión', 'patada', 'cerrado']),
             # CORE Y GEMELOS
-            'Crunch con peso',
-            'Plancha frontal con giro',
-            'Despliegue de rueda abdominal de pie',
-            'Prensa de gemelos en trineo a 45°',
-            'Elevación de talones de pie con mancuernas'
+            ('abdomin', ['crunch', 'plancha', 'rueda', 'elevacion', 'elevación']),
+            ('gemelo', ['talon', 'gemelo'])
         ]
         
-        # Obtenemos TODOS los ejercicios que coincidan exactamente con nuestra lista maestra
-        popular_exercises = list(Exercise.objects.filter(
-            name__in=exact_famous_exercises,
-            is_global=True
-        ))
+        popular_exercises = []
+        seen_ids = set()
         
-        # Por si el usuario ha borrado alguno, rellenamos hasta llegar a 40 con ejercicios globales variados
+        for muscle_fragment, keywords in robust_search_map:
+            for kw in keywords:
+                # Buscamos de forma muy permisiva: que el grupo contenga el fragmento y el nombre la palabra
+                matches = Exercise.objects.filter(
+                    muscle_group__icontains=muscle_fragment,
+                    name__icontains=kw,
+                    is_global=True
+                )[:3] # Hasta 3 por palabra clave
+                
+                for ex in matches:
+                    if ex.id not in seen_ids:
+                        popular_exercises.append(ex)
+                        seen_ids.add(ex.id)
+                        
+        # Búsqueda de rescate universal para los reyes del gimnasio (por si fallan los grupos musculares)
+        kings = ['press de banca', 'sentadilla', 'peso muerto', 'dominada']
+        for king in kings:
+            matches = Exercise.objects.filter(name__icontains=king, is_global=True)[:2]
+            for ex in matches:
+                if ex.id not in seen_ids:
+                    popular_exercises.append(ex)
+                    seen_ids.add(ex.id)
+        
+        # Si la lista es menor a 40, rellenamos con globales para que nunca esté vacía
         if len(popular_exercises) < 40:
-            seen_ids = [e.id for e in popular_exercises]
             additional = Exercise.objects.filter(is_global=True).exclude(id__in=seen_ids)[:(40 - len(popular_exercises))]
             popular_exercises.extend(additional)
 
-        serializer = self.get_serializer(popular_exercises, many=True)
+        serializer = self.get_serializer(popular_exercises[:100], many=True)
         return Response(serializer.data)
