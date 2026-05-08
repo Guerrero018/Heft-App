@@ -5,22 +5,26 @@ import 'package:dio/dio.dart';
 
 class ExerciseState {
   final List<Exercise> exercises;
+  final List<Exercise> popularExercises;
   final bool isLoading;
   final String? error;
 
   ExerciseState({
     this.exercises = const [],
+    this.popularExercises = const [],
     this.isLoading = false,
     this.error,
   });
 
   ExerciseState copyWith({
     List<Exercise>? exercises,
+    List<Exercise>? popularExercises,
     bool? isLoading,
     String? error,
   }) {
     return ExerciseState(
       exercises: exercises ?? this.exercises,
+      popularExercises: popularExercises ?? this.popularExercises,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -34,24 +38,50 @@ class ExerciseNotifier extends Notifier<ExerciseState> {
   }
 
   Future<void> fetchExercises() async {
-    if (state.exercises.isNotEmpty) return; // Ya cargados
-    
+    if (state.exercises.isNotEmpty) return;
+
     state = state.copyWith(isLoading: true, error: null);
     try {
       final response = await apiClient.get('exercises/');
-      if (response.data is List) {
-        final List<Exercise> exercises = (response.data as List)
-            .map((json) => Exercise.fromJson(json))
-            .toList();
-        state = state.copyWith(exercises: exercises, isLoading: false);
-      } else if (response.data is Map && response.data.containsKey('results')) {
-        final List<Exercise> exercises = (response.data['results'] as List)
+      final data = response.data;
+      List<dynamic> list = [];
+      if (data is List) {
+        list = data;
+      } else if (data is Map && data.containsKey('results')) {
+        list = data['results'];
+      }
+      
+      if (list.isNotEmpty) {
+        final List<Exercise> exercises = list
             .map((json) => Exercise.fromJson(json))
             .toList();
         state = state.copyWith(exercises: exercises, isLoading: false);
       }
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> fetchPopularExercises() async {
+    try {
+      final response = await apiClient.get('exercises/popular/');
+      final dynamic data = response.data;
+      List<dynamic> list = [];
+      
+      if (data is List) {
+        list = data;
+      } else if (data is Map && data.containsKey('results')) {
+        list = data['results'];
+      }
+
+      if (list.isNotEmpty) {
+        final List<Exercise> popular = list
+            .map((json) => Exercise.fromJson(json))
+            .toList();
+        state = state.copyWith(popularExercises: popular);
+      }
+    } catch (e) {
+      // Error silencioso en producción
     }
   }
 
@@ -65,16 +95,19 @@ class ExerciseNotifier extends Notifier<ExerciseState> {
   }) async {
     state = state.copyWith(isLoading: true);
     try {
-      final response = await apiClient.post('exercises/', data: {
-        'name': name,
-        'muscle_group': muscleGroup,
-        'exercise_type': exerciseType,
-        'description': description ?? '',
-        'instructions': instructions ?? [],
-        'gif_url': gifUrl ?? '',
-        'is_global': false,
-      });
-      
+      final response = await apiClient.post(
+        'exercises/',
+        data: {
+          'name': name,
+          'muscle_group': muscleGroup,
+          'exercise_type': exerciseType,
+          'description': description ?? '',
+          'instructions': instructions ?? [],
+          'gif_url': gifUrl ?? '',
+          'is_global': false,
+        },
+      );
+
       final newExercise = Exercise.fromJson(response.data);
       state = state.copyWith(
         exercises: [newExercise, ...state.exercises],
