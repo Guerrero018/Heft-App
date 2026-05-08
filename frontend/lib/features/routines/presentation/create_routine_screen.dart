@@ -324,6 +324,7 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
   String _searchQuery = '';
   String _selectedMuscle = 'all';
   String _selectedEquipment = 'all';
+  bool _onlyPopular = false;
 
   final List<Map<String, String>> _muscleGroups = [
     {'id': 'all', 'name': 'Todos'},
@@ -352,14 +353,19 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(exerciseProvider.notifier).fetchExercises());
+    Future.microtask(() {
+      ref.read(exerciseProvider.notifier).fetchExercises();
+      ref.read(exerciseProvider.notifier).fetchPopularExercises();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(exerciseProvider);
     
-    final filtered = state.exercises.where((e) {
+    final baseList = _onlyPopular ? state.popularExercises : state.exercises;
+
+    final filtered = baseList.where((e) {
       final matchesSearch = e.name.toLowerCase().contains(_searchQuery.toLowerCase());
       final matchesMuscle = _selectedMuscle == 'all' || e.muscleGroup == _selectedMuscle;
       final matchesEq = _selectedEquipment == 'all' || e.exerciseType == _selectedEquipment;
@@ -409,15 +415,40 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: TextField(
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                  decoration: InputDecoration(
-                    hintText: 'Buscar ejercicio...',
-                    prefixIcon: const Icon(Icons.search, color: AppTheme.primaryColor),
-                    filled: true,
-                    fillColor: Colors.black26,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        onChanged: (val) => setState(() => _searchQuery = val),
+                        decoration: InputDecoration(
+                          hintText: 'Buscar ejercicio...',
+                          prefixIcon: const Icon(Icons.search, color: AppTheme.primaryColor),
+                          filled: true,
+                          fillColor: Colors.black26,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () => setState(() => _onlyPopular = !_onlyPopular),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: _onlyPopular ? AppTheme.primaryColor : AppTheme.cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _onlyPopular ? AppTheme.primaryColor : Colors.white10,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.local_fire_department_outlined,
+                          color: _onlyPopular ? Colors.black : AppTheme.primaryColor,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               
@@ -476,6 +507,73 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
               ),
 
               const SizedBox(height: 16),
+              
+              if (state.popularExercises.isNotEmpty && _searchQuery.isEmpty && !_onlyPopular && _selectedMuscle == 'all' && _selectedEquipment == 'all') ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.local_fire_department_outlined, color: AppTheme.primaryColor, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Más Populares',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      TextButton(
+                        onPressed: () => setState(() => _onlyPopular = true),
+                        child: const Text('Ver todos', style: TextStyle(color: AppTheme.primaryColor, fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  height: 110,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: state.popularExercises.length,
+                    itemBuilder: (context, index) {
+                      final e = state.popularExercises[index];
+                      return GestureDetector(
+                        onTap: () => Navigator.of(context).pop(e),
+                        child: Container(
+                          width: 150,
+                          margin: const EdgeInsets.only(right: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppTheme.primaryColor.withOpacity(0.1), width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                e.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                              Text(
+                                e.muscleGroup.toUpperCase(),
+                                style: const TextStyle(fontSize: 9, color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+
               const Divider(height: 1, color: Colors.white10),
 
               Expanded(
