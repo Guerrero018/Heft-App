@@ -35,3 +35,4 @@ backend/.env
 .agents/
 /tmp/
 credentials.txt
+Rutina+pesos.csv
