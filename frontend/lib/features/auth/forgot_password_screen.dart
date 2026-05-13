@@ -23,7 +23,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   bool _codeSent = false;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
-  String? _debugCode;
 
   @override
   void initState() {
@@ -62,23 +61,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     setState(() {
       _codeSent = true;
-      _debugCode = response['debug_code']?.toString();
     });
 
     _showSnackBar(
-      response['detail']?.toString() ?? 'Codigo enviado correctamente',
+      response['detail']?.toString() ?? 'Código enviado correctamente',
     );
   }
 
   Future<void> _confirmReset() async {
     if (_codeController.text.trim().length != 6) {
-      _showSnackBar('Introduce el codigo de 6 digitos', isError: true);
+      _showSnackBar('Introduce el código de 6 dígitos', isError: true);
       return;
     }
 
     if (_newPasswordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
-      _showSnackBar('Completa la nueva contrasena dos veces', isError: true);
+      _showSnackBar('Completa la nueva contraseña dos veces', isError: true);
       return;
     }
 
@@ -93,22 +91,58 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     if (!success) {
       _showSnackBar(
-        ref.read(authProvider).error ?? 'No se pudo actualizar la contrasena',
+        ref.read(authProvider).error ?? 'No se pudo actualizar la contraseña',
         isError: true,
       );
       return;
     }
 
-    _showSnackBar('Contrasena actualizada. Ya puedes iniciar sesion.');
+    _showSnackBar('Contraseña actualizada. Ya puedes iniciar sesión.');
     Navigator.of(context).pop(_emailController.text.trim());
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
+    final accentColor = isError
+        ? const Color(0xFFFF7A7A)
+        : const Color(0xFF7EE2A8);
+    final backgroundColor = Color.alphaBlend(
+      accentColor.withValues(alpha: 0.14),
+      AppTheme.cardColor,
+    );
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : Colors.green,
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline_rounded : Icons.check_circle_rounded,
+              color: accentColor,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: AppTheme.textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
+        elevation: 0,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: accentColor.withValues(alpha: 0.35),
+          ),
+        ),
       ),
     );
   }
@@ -122,7 +156,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Recuperar contrasena'),
+        title: const Text('Recuperar contraseña'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -133,11 +167,40 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               const SizedBox(height: 12),
               Text(
                 _codeSent
-                    ? 'Introduce el codigo que te hemos enviado y elige una nueva contrasena.'
-                    : 'Te enviaremos un codigo de 6 digitos a tu email para restablecer la contrasena.',
+                    ? 'Introduce el código que te hemos enviado y elige una nueva contraseña.'
+                    : 'Te enviaremos un código de 6 dígitos a tu email para restablecer la contraseña.',
                 style: const TextStyle(
                   color: AppTheme.hintColor,
                   fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.primaryColor.withOpacity(0.4)),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: AppTheme.primaryColor,
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Importante: si no ves el correo en tu bandeja principal, revisa también la carpeta de spam o promociones.',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
@@ -161,7 +224,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   keyboardType: TextInputType.number,
                   style: const TextStyle(color: AppTheme.textColor),
                   decoration: const InputDecoration(
-                    hintText: 'Codigo de 6 digitos',
+                    hintText: 'Código de 6 dígitos',
                     prefixIcon: Icon(
                       Icons.mark_email_read_outlined,
                       color: AppTheme.hintColor,
@@ -174,7 +237,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   obscureText: _obscureNewPassword,
                   style: const TextStyle(color: AppTheme.textColor),
                   decoration: InputDecoration(
-                    hintText: 'Nueva contrasena',
+                    hintText: 'Nueva contraseña',
                     prefixIcon: const Icon(
                       Icons.lock_outline,
                       color: AppTheme.hintColor,
@@ -200,7 +263,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   obscureText: _obscureConfirmPassword,
                   style: const TextStyle(color: AppTheme.textColor),
                   decoration: InputDecoration(
-                    hintText: 'Repite la nueva contrasena',
+                    hintText: 'Repite la nueva contraseña',
                     prefixIcon: const Icon(
                       Icons.lock_reset_outlined,
                       color: AppTheme.hintColor,
@@ -221,27 +284,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     ),
                   ),
                 ),
-                if (_debugCode != null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white10),
-                    ),
-                    child: Text(
-                      'Codigo de desarrollo: $_debugCode',
-                      style: const TextStyle(color: AppTheme.primaryColor),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: authState.isLoading ? null : _requestCode,
-                    child: const Text('Reenviar codigo'),
+                    child: const Text('Reenviar código'),
                   ),
                 ),
               ],
@@ -259,7 +307,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                           color: Colors.black,
                         ),
                       )
-                    : Text(_codeSent ? 'Actualizar contrasena' : 'Enviar codigo'),
+                    : Text(_codeSent ? 'Actualizar contraseña' : 'Enviar código'),
               ),
             ],
           ),
