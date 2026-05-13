@@ -1,6 +1,11 @@
-from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import check_password
+from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
+from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from .models import PasswordResetCode
 
 User = get_user_model()
 
@@ -93,4 +98,87 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password'],
             **onboarding_data
         )
+        return user
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        email = value.lower().strip()
+        if not User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError("No existe ninguna cuenta con ese email.")
+        return email
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=6, max_length=6)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+    default_error_messages = {
+        "invalid_code": "El código es inválido o ha expirado.",
+        "too_many_attempts": "Demasiados intentos. Solicita un nuevo código.",
+    }
+
+    def validate(self, attrs):
+        attrs["email"] = attrs["email"].lower().strip()
+
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Las contraseñas no coinciden."}
+            )
+
+        user = User.objects.filter(email__iexact=attrs["email"]).first()
+        if not user:
+            raise serializers.ValidationError({"email": "No existe ninguna cuenta con ese email."})
+
+        reset_code = (
+            PasswordResetCode.objects.filter(
+                user=user,
+                used_at__isnull=True,
+                expires_at__gt=timezone.now(),
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not reset_code:
+            raise serializers.ValidationError({"code": self.error_messages["invalid_code"]})
+
+        if reset_code.attempts >= 5:
+            raise serializers.ValidationError({"code": self.error_messages["too_many_attempts"]})
+
+        if not check_password(attrs["code"], reset_code.code_hash):
+            reset_code.attempts += 1
+            update_fields = ["attempts"]
+            if reset_code.attempts >= 5:
+                reset_code.used_at = timezone.now()
+                update_fields.append("used_at")
+            reset_code.save(update_fields=update_fields)
+            raise serializers.ValidationError({"code": self.error_messages["invalid_code"]})
+
+        validate_password(attrs["new_password"], user=user)
+
+        attrs["user"] = user
+        attrs["reset_code"] = reset_code
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.validated_data["user"]
+        reset_code = self.validated_data["reset_code"]
+        now = timezone.now()
+
+        user.set_password(self.validated_data["new_password"])
+        user.save(update_fields=["password"])
+
+        PasswordResetCode.objects.filter(
+            user=user,
+            used_at__isnull=True,
+        ).update(used_at=now)
+
+        reset_code.used_at = now
+        reset_code.save(update_fields=["used_at"])
+
         return user
