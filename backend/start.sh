@@ -1,13 +1,16 @@
 #!/bin/bash
+set -e
 
-# 1. Ejecutar las migraciones (crear tablas en Neon)
-python manage.py migrate --noinput
+# Mantener el arranque ligero evita que Render marque la instancia
+# como no saludable durante un cold start o un reinicio.
+if [ "${RUN_MIGRATIONS_ON_START:-0}" = "1" ]; then
+  echo "Running database migrations on startup..."
+  python manage.py migrate --noinput
+fi
 
-# 2. Recolectar archivos estáticos (para el Admin de Django)
-python manage.py collectstatic --noinput
+if [ "${RUN_COLLECTSTATIC_ON_START:-0}" = "1" ]; then
+  echo "Collecting static files on startup..."
+  python manage.py collectstatic --noinput
+fi
 
-# 3. (Opcional) Sembrar ejercicios si la base está vacía
-# python seed_exercises.py
-
-# 4. Iniciar Gunicorn
-gunicorn heft_core.wsgi:application --bind 0.0.0.0:8000
+exec gunicorn heft_core.wsgi:application --bind 0.0.0.0:8000

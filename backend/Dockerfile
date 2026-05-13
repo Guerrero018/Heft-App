@@ -25,8 +25,8 @@ COPY . .
 # Exponer el puerto que usará Django
 EXPOSE 8000
 
-# Dar permisos de ejecución al script
-RUN chmod +x start.sh
+# Dar permisos de ejecución a los scripts
+RUN chmod +x start.sh release.sh
 
-# Ejecutar el script de inicio para migraciones y levantar el servidor
+# Ejecutar el script de arranque del servidor
 CMD ["./start.sh"]

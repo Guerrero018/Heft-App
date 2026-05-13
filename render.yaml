@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: heft-backend-ywi0
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health/
+    preDeployCommand: ./release.sh
