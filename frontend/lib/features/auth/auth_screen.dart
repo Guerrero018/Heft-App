@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import 'auth_provider.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
@@ -244,6 +245,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     prefixIcon: Icon(Icons.lock_outline, color: AppTheme.hintColor),
                   ),
                   style: const TextStyle(color: Colors.white),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: authState.isLoading
+                        ? null
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => ForgotPasswordScreen(
+                                  initialEmail: _emailController.text.trim(),
+                                ),
+                              ),
+                            );
+                          },
+                    child: const Text('Forgot Password?'),
+                  ),
                 ),
               ],
               

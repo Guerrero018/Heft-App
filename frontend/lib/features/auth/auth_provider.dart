@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -6,6 +5,28 @@ import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart' as gsi;
 import '../../core/api/api_client.dart';
 import '../../core/api/constants.dart';
+
+String extractApiErrorMessage(
+  dynamic data, {
+  required List<String> keys,
+  required String fallback,
+}) {
+  if (data is! Map) {
+    return fallback;
+  }
+
+  for (final key in keys) {
+    final value = data[key];
+    if (value is List && value.isNotEmpty) {
+      return value.first.toString();
+    }
+    if (value != null) {
+      return value.toString();
+    }
+  }
+
+  return fallback;
+}
 
 class AuthState {
   final bool isAuthenticated;
@@ -109,6 +130,79 @@ class AuthNotifier extends Notifier<AuthState> {
         isLoading: false,
         error: 'An unexpected error occurred',
       );
+    }
+  }
+
+  Future<Map<String, dynamic>?> requestPasswordReset(String email) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final response = await apiClient.post(
+        'auth/password-reset/request/',
+        data: {'email': email.trim()},
+      );
+
+      state = state.copyWith(isLoading: false, error: null);
+      return Map<String, dynamic>.from(response.data as Map);
+    } on DioException catch (e) {
+      final message = extractApiErrorMessage(
+        e.response?.data,
+        keys: const ['detail', 'email', 'non_field_errors'],
+        fallback: 'No se pudo solicitar el código de recuperación',
+      );
+      state = state.copyWith(isLoading: false, error: message);
+      return null;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Error inesperado al solicitar la recuperación',
+      );
+      return null;
+    }
+  }
+
+  Future<bool> confirmPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      await apiClient.post(
+        'auth/password-reset/confirm/',
+        data: {
+          'email': email.trim(),
+          'code': code.trim(),
+          'new_password': newPassword,
+          'confirm_password': confirmPassword,
+        },
+      );
+
+      state = state.copyWith(isLoading: false, error: null);
+      return true;
+    } on DioException catch (e) {
+      final message = extractApiErrorMessage(
+        e.response?.data,
+        keys: const [
+          'detail',
+          'code',
+          'new_password',
+          'confirm_password',
+          'email',
+          'non_field_errors',
+        ],
+        fallback: 'No se pudo actualizar la contraseña',
+      );
+      state = state.copyWith(isLoading: false, error: message);
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Error inesperado al restablecer la contraseña',
+      );
+      return false;
     }
   }
 
@@ -352,7 +446,6 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> checkAuth() async {
     try {
       final token = await _storage.read(key: AppConstants.tokenKey);
-      final onboardedStr = await _storage.read(key: AppConstants.onboardedKey);
       final localUserData = await _storage.read(key: 'user_data');
       
       print('🔍 Verificando sesión... Token: ${token != null ? 'SÍ' : 'NO'}');

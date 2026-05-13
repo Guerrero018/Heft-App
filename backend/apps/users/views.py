@@ -1,27 +1,39 @@
 import os
-from rest_framework import generics, permissions
-from django.contrib.auth import get_user_model
-from .serializers import RegisterSerializer
+import secrets
+from datetime import timedelta
 
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
+from django.core.mail import send_mail
+from django.utils import timezone
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
+from rest_framework import generics, permissions, status
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from .models import PasswordResetCode
+from .serializers import (
+    CustomUserSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
+    RegisterSerializer,
+)
 
 User = get_user_model()
+
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (permissions.AllowAny,)
     serializer_class = RegisterSerializer
 
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
-from django.conf import settings
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import CustomUserSerializer, RegisterSerializer
 
 class CheckEmailView(APIView):
     permission_classes = (permissions.AllowAny,)
@@ -30,8 +42,6 @@ class CheckEmailView(APIView):
         email = request.data.get('email', '').lower().strip()
         exists = User.objects.filter(email__iexact=email).exists()
         return Response({'exists': exists})
-
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 class UpdateProfileView(generics.UpdateAPIView):
     queryset = User.objects.all()
@@ -59,6 +69,63 @@ class ProfileView(generics.RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_object(), context={'request': request})
         return Response(serializer.data)
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        user = User.objects.get(email__iexact=email)
+        code = f"{secrets.randbelow(1000000):06d}"
+        expires_at = timezone.now() + timedelta(minutes=15)
+
+        PasswordResetCode.objects.filter(
+            user=user,
+            used_at__isnull=True,
+        ).update(used_at=timezone.now())
+
+        PasswordResetCode.objects.create(
+            user=user,
+            code_hash=make_password(code),
+            expires_at=expires_at,
+        )
+
+        send_mail(
+            subject="Heft - Recuperación de contraseña",
+            message=(
+                f"Tu código de recuperación es: {code}\n\n"
+                "Este código caduca en 15 minutos.\n"
+                "Si no has solicitado este cambio, puedes ignorar este correo."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+
+        response_data = {
+            "detail": "Te hemos enviado un código de recuperación por email.",
+        }
+        if settings.DEBUG:
+            response_data["debug_code"] = code
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"detail": "Tu contraseña se ha actualizado correctamente."},
+            status=status.HTTP_200_OK,
+        )
 
 class GoogleDirectLogin(APIView):
     permission_classes = (permissions.AllowAny,)
