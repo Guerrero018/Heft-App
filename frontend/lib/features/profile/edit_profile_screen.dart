@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_message.dart';
 import '../auth/auth_provider.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -114,15 +115,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       );
       
       if (mounted) {
-        if (ref.read(authProvider).error == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Perfil actualizado correctamente')),
-          );
+        final error = ref.read(authProvider).error;
+        if (error == null) {
+          final messenger = ScaffoldMessenger.of(context);
           Navigator.of(context).pop();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(ref.read(authProvider).error!)),
+          messenger.showSnackBar(
+            AppMessage.snackBar('Perfil actualizado correctamente'),
           );
+        } else {
+          AppMessage.showError(context, error);
         }
       }
     }

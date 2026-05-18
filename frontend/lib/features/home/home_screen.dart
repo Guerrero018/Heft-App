@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_message.dart';
 import '../profile/profile_screen.dart';
 import '../routines/data/routine_provider.dart';
 import '../routines/domain/routine_model.dart';
@@ -491,9 +492,23 @@ class RoutineCard extends ConsumerWidget {
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              ref.read(routineProvider.notifier).deleteRoutine(routine.id!);
+              try {
+                await ref
+                    .read(routineProvider.notifier)
+                    .deleteRoutine(routine.id!);
+                if (context.mounted) {
+                  AppMessage.showSuccess(context, 'Rutina eliminada');
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  AppMessage.showError(
+                    context,
+                    'Error al eliminar la rutina',
+                  );
+                }
+              }
             },
             child: const Text(
               'Eliminar',

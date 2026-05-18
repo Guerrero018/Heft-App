@@ -332,8 +332,8 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
     }
   }
 
-  Future<void> finishWorkout() async {
-    if (!state.isActive) return;
+  Future<bool> finishWorkout() async {
+    if (!state.isActive) return false;
 
     final endTime = DateTime.now();
     
@@ -380,9 +380,11 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
       ref.read(workoutHistoryProvider.notifier).fetchWorkouts();
       
       state = LiveWorkoutState(); // Reset state
+      return true;
     } catch (e) {
       print('Error finishing workout: $e');
       state = LiveWorkoutState();
+      return false;
     }
   }
 

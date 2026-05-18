@@ -27,7 +27,7 @@ class HeftApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       title: 'Heft',
       theme: AppTheme.darkTheme,
-      home: authState.isLoading
+      home: authState.isInitializing
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : authState.isAuthenticated
               ? const HomeScreen()

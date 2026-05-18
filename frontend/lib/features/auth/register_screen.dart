@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_message.dart';
 import 'auth_provider.dart';
 import '../onboarding/onboarding_screen.dart';
 
@@ -43,23 +44,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final confirmPassword = _confirmPasswordController.text.trim();
 
     if (username.isEmpty || email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
-      );
+      AppMessage.showError(context, 'Rellena todos los campos');
       return;
     }
 
     if (password != confirmPassword) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+      AppMessage.showError(context, 'Las contraseñas no coinciden');
       return;
     }
 
     await ref.read(authProvider.notifier).register(username, email, password);
 
+    if (!mounted) return;
+
+    final error = ref.read(authProvider).error;
+    if (error != null) {
+      AppMessage.showError(context, error);
+      return;
+    }
+
     // Si el registro es un éxito, mandamos al cuestionario (porque es nuevo)
-    if (mounted && ref.read(authProvider).isAuthenticated) {
+    if (ref.read(authProvider).isAuthenticated) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const OnboardingScreen()),
       );
@@ -201,17 +206,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Show error message if any
-              if (ref.watch(authProvider).error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Text(
-                    ref.watch(authProvider).error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red, fontSize: 14),
-                  ),
-                ),
-
               // Register Button
               ElevatedButton(
                 onPressed: ref.watch(authProvider).isLoading
@@ -266,8 +260,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 child: OutlinedButton(
                   onPressed: () async {
                     await ref.read(authProvider.notifier).loginWithGoogle();
+                    if (!mounted) return;
                     final authState = ref.read(authProvider);
-                    if (mounted && authState.isAuthenticated) {
+                    if (authState.error != null) {
+                      AppMessage.showError(context, authState.error!);
+                      return;
+                    }
+                    if (authState.isAuthenticated) {
                       if (!authState.isOnboarded) {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(

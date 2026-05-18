@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_message.dart';
 import '../data/routine_provider.dart';
 import '../../exercises/domain/exercise_model.dart';
 import '../../exercises/presentation/exercise_picker_bottom_sheet.dart';
@@ -72,16 +73,15 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   Future<void> _handleSave() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, indica un nombre para la rutina')),
+      AppMessage.showError(
+        context,
+        'Por favor, indica un nombre para la rutina',
       );
       return;
     }
 
     if (_selectedExercises.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Añade al menos un ejercicio')),
-      );
+      AppMessage.showError(context, 'Añade al menos un ejercicio');
       return;
     }
 
@@ -114,16 +114,16 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       }
 
       if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        final message = widget.existingRoutine == null
+            ? 'Rutina creada con éxito'
+            : 'Rutina actualizada';
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.existingRoutine == null ? 'Rutina creada con éxito' : 'Rutina actualizada')),
-        );
+        messenger.showSnackBar(AppMessage.snackBar(message));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al guardar la rutina: $e')),
-        );
+        AppMessage.showError(context, 'Error al guardar la rutina: $e');
       }
     }
   }

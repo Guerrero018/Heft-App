@@ -30,7 +30,10 @@ String extractApiErrorMessage(
 
 class AuthState {
   final bool isAuthenticated;
+  /// Carga de login/registro/Google (no debe reemplazar toda la app).
   final bool isLoading;
+  /// Solo verificación de sesión al arrancar (splash en main.dart).
+  final bool isInitializing;
   final bool isOnboarded;
   final Map<String, dynamic>? user;
   final String? error;
@@ -38,36 +41,61 @@ class AuthState {
   AuthState({
     this.isAuthenticated = false,
     this.isLoading = false,
+    this.isInitializing = false,
     this.isOnboarded = false,
     this.user,
     this.error,
   });
 
+  static const Object _unset = Object();
+
   AuthState copyWith({
     bool? isAuthenticated,
     bool? isLoading,
+    bool? isInitializing,
     bool? isOnboarded,
     Map<String, dynamic>? user,
-    String? error,
+    Object? error = _unset,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       isLoading: isLoading ?? this.isLoading,
+      isInitializing: isInitializing ?? this.isInitializing,
       isOnboarded: isOnboarded ?? this.isOnboarded,
       user: user ?? this.user,
-      error: error ?? this.error,
+      error: identical(error, _unset) ? this.error : error as String?,
     );
   }
+}
+
+String _mapLoginErrorMessage(String? message) {
+  if (message == null || message.isEmpty) {
+    return 'La contraseña es incorrecta';
+  }
+  final lower = message.toLowerCase();
+  if (lower.contains('credential') ||
+      lower.contains('password') ||
+      lower.contains('contraseña') ||
+      lower.contains('incorrect') ||
+      lower.contains('invalid') ||
+      lower.contains('no active account')) {
+    return 'La contraseña es incorrecta';
+  }
+  return message;
 }
 
 class AuthNotifier extends Notifier<AuthState> {
   final _storage = const FlutterSecureStorage();
 
+  void clearError() {
+    state = state.copyWith(error: null);
+  }
+
   @override
   AuthState build() {
     // Verificamos la sesión en el siguiente frame para no bloquear el build
     Future.microtask(() => checkAuth());
-    return AuthState(isLoading: true);
+    return AuthState(isInitializing: true);
   }
 
   Future<bool?> checkEmail(String email) async {
@@ -123,12 +151,13 @@ class AuthNotifier extends Notifier<AuthState> {
         );
       }
     } on DioException catch (e) {
-      final message = e.response?.data['detail'] ?? e.response?.data['error'] ?? 'Login failed';
+      final raw = e.response?.data['detail'] ?? e.response?.data['error'];
+      final message = _mapLoginErrorMessage(raw?.toString());
       state = state.copyWith(isLoading: false, error: message);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: 'An unexpected error occurred',
+        error: 'Ha ocurrido un error inesperado',
       );
     }
   }
@@ -459,7 +488,7 @@ class AuthNotifier extends Notifier<AuthState> {
               isAuthenticated: true,
               isOnboarded: user['is_onboarded'] == true,
               user: user,
-              isLoading: false,
+              isInitializing: false,
             );
           } catch (_) {}
         }
@@ -467,11 +496,11 @@ class AuthNotifier extends Notifier<AuthState> {
         // SINCRONIZACIÓN: Refrescar datos desde el servidor en segundo plano
         syncProfile();
       } else {
-        state = state.copyWith(isLoading: false, isAuthenticated: false);
+        state = state.copyWith(isInitializing: false, isAuthenticated: false);
       }
     } catch (e) {
       print('❌ Error al verificar sesión: $e');
-      state = state.copyWith(isLoading: false, isAuthenticated: false);
+      state = state.copyWith(isInitializing: false, isAuthenticated: false);
     }
   }
 }
