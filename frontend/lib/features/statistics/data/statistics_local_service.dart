@@ -167,25 +167,26 @@ UserStatistics buildStatisticsFromWorkouts({
     final points = ex.points.values.toList()
       ..sort((a, b) => a.sessionKey.compareTo(b.sessionKey));
 
-    var trend = 0.0;
-    if (points.length >= 2) {
-      final first = points.first.maxWeight;
-      final last = points.last.maxWeight;
-      if (first > 0) trend = ((last - first) / first) * 100;
-    }
+    final volumeTrend = _progressTrend(
+      points.map((p) => p.volume).toList(),
+    );
+    final maxWeightTrend = _progressTrend(
+      points.map((p) => p.maxWeight).toList(),
+    );
 
     return ExerciseProgress(
       exerciseId: ex.exerciseId,
       exerciseName: ex.exerciseName,
       muscleGroup: ex.muscleGroup,
       muscleGroupLabel: _muscleLabel(ex.muscleGroup),
-      trendPercent: double.parse(trend.toStringAsFixed(1)),
+      volumeTrendPercent: volumeTrend,
+      maxWeightTrendPercent: maxWeightTrend,
       dataPoints: points
           .map(
             (p) => ExerciseProgressPoint(
               date: p.date,
-              maxWeight: p.maxWeight,
               volume: p.volume,
+              maxWeight: p.maxWeight,
             ),
           )
           .toList(),
@@ -241,6 +242,14 @@ UserStatistics buildStatisticsFromWorkouts({
 
 int _daysBetween(DateTime start, DateTime end) {
   return end.difference(start).inDays + 1;
+}
+
+double _progressTrend(List<double> values) {
+  if (values.length < 2) return 0;
+  final first = values.first;
+  final last = values.last;
+  if (first <= 0) return 0;
+  return double.parse((((last - first) / first) * 100).toStringAsFixed(1));
 }
 
 String _dayKey(DateTime d) =>

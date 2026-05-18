@@ -108,3 +108,16 @@ final pinnedExerciseChartsProvider =
     NotifierProvider<PinnedExerciseChartsNotifier, List<PinnedExerciseRef>>(
   PinnedExerciseChartsNotifier.new,
 );
+
+/// Bloquea el swipe del TabBarView mientras el usuario arrastra sobre un gráfico.
+class ChartScrubActiveNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setActive(bool active) => state = active;
+}
+
+final chartScrubActiveProvider =
+    NotifierProvider<ChartScrubActiveNotifier, bool>(
+  ChartScrubActiveNotifier.new,
+);

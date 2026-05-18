@@ -69,4 +69,9 @@ class UserStatisticsTests(APITestCase):
         self.assertEqual(
             data["exercise_progress"][0]["exercise_name"], "Press Banca"
         )
+        session_volume = 80 * 8 + 75 * 10
+        self.assertEqual(
+            data["exercise_progress"][0]["data_points"][0]["volume"],
+            session_volume,
+        )
         self.assertIn("chest", data["muscle_map"]["front"])
