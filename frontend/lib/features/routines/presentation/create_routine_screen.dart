@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/label_translations.dart';
 import '../data/routine_provider.dart';
 import '../../exercises/data/exercise_provider.dart';
 import '../../exercises/domain/exercise_model.dart';
@@ -255,7 +256,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
             children: [
               _buildInputColumn('Series', (val) => item.sets = int.tryParse(val) ?? 0, item.sets.toString()),
               const SizedBox(width: 16),
-              _buildInputColumn('Reps', (val) => item.reps = int.tryParse(val) ?? 0, item.reps.toString()),
+              _buildInputColumn('Repeticiones', (val) => item.reps = int.tryParse(val) ?? 0, item.reps.toString()),
               const SizedBox(width: 16),
               _buildInputColumn('Peso (kg)', (val) => item.weight = double.tryParse(val) ?? 0, item.weight.toString()),
             ],
@@ -593,7 +594,7 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
                                             ],
                                           ),
                                           Text(
-                                            e.muscleGroup.toUpperCase(),
+                                            translateMuscleGroup(e.muscleGroup),
                                             style: const TextStyle(fontSize: 9, color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
                                           ),
                                         ],
@@ -650,7 +651,7 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
                                             borderRadius: BorderRadius.circular(4),
                                           ),
                                           child: Text(
-                                            e.muscleGroup.toUpperCase(),
+                                            translateMuscleGroup(e.muscleGroup),
                                             style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.bold),
                                           ),
                                         ),
@@ -662,7 +663,7 @@ class _ExercisePickerBottomSheetState extends ConsumerState<ExercisePickerBottom
                                             borderRadius: BorderRadius.circular(4),
                                           ),
                                           child: Text(
-                                            (e.equipment ?? e.exerciseType).replaceAll('_', ' ').toUpperCase(),
+                                            translateEquipmentType(e.equipment ?? e.exerciseType),
                                             style: TextStyle(color: AppTheme.hintColor.withOpacity(0.8), fontSize: 10, fontWeight: FontWeight.w600),
                                           ),
                                         ),

@@ -228,7 +228,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 keyboardType: TextInputType.emailAddress,
                 enabled: !_showPassword && !authState.isLoading,
                 decoration: InputDecoration(
-                  hintText: 'Email',
+                  hintText: 'Correo electrónico',
                   errorText: _emailError,
                   prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.hintColor),
                 ),
@@ -260,7 +260,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               ),
                             );
                           },
-                    child: const Text('Forgot Password?'),
+                    child: const Text('¿Olvidaste tu contraseña?'),
                   ),
                 ),
               ],

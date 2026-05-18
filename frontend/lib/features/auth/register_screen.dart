@@ -44,7 +44,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     if (username.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
+        const SnackBar(content: Text('Rellena todos los campos')),
       );
       return;
     }
@@ -52,7 +52,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (password != confirmPassword) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+      ).showSnackBar(const SnackBar(content: Text('Las contraseñas no coinciden')));
       return;
     }
 
@@ -134,7 +134,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 controller: _usernameController,
                 style: const TextStyle(color: AppTheme.textColor),
                 decoration: const InputDecoration(
-                  hintText: 'Username',
+                  hintText: 'Nombre de usuario',
                   prefixIcon: Icon(
                     Icons.person_outline,
                     color: AppTheme.hintColor,
@@ -149,7 +149,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 keyboardType: TextInputType.emailAddress,
                 style: const TextStyle(color: AppTheme.textColor),
                 decoration: const InputDecoration(
-                  hintText: 'Email address',
+                  hintText: 'Correo electrónico',
                   prefixIcon: Icon(
                     Icons.email_outlined,
                     color: AppTheme.hintColor,
@@ -164,7 +164,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 obscureText: !_isPasswordVisible,
                 style: const TextStyle(color: AppTheme.textColor),
                 decoration: InputDecoration(
-                  hintText: 'Password',
+                  hintText: 'Contraseña',
                   prefixIcon: const Icon(
                     Icons.lock_outline,
                     color: AppTheme.hintColor,
@@ -192,7 +192,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 obscureText: !_isPasswordVisible,
                 style: const TextStyle(color: AppTheme.textColor),
                 decoration: const InputDecoration(
-                  hintText: 'Confirm Password',
+                  hintText: 'Confirmar contraseña',
                   prefixIcon: Icon(
                     Icons.lock_outline, // Changed from lock_clock_outlined
                     color: AppTheme.hintColor,
@@ -226,7 +226,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           color: Colors.black,
                         ),
                       )
-                    : const Text('CREATE ACCOUNT'),
+                    : const Text('CREAR CUENTA'),
               ),
               const SizedBox(height: 24),
 

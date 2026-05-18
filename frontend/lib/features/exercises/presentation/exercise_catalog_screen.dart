@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/label_translations.dart';
 import '../data/exercise_provider.dart';
 import 'exercise_detail_screen.dart';
 import 'create_exercise_screen.dart';
@@ -128,7 +129,7 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                         if (_onlyPopular) ...[
                           const SizedBox(width: 8),
                           const Text(
-                            'POPULAR',
+                            'POPULARES',
                             style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10),
                           ),
                         ],
@@ -299,7 +300,7 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          e.muscleGroup.toUpperCase(),
+                                          translateMuscleGroup(e.muscleGroup),
                                           style: const TextStyle(fontSize: 9, color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
                                         ),
                                       ),
@@ -357,7 +358,7 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
-                                        e.muscleGroup.toUpperCase(),
+                                        translateMuscleGroup(e.muscleGroup),
                                         style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.bold),
                                       ),
                                     ),
@@ -369,7 +370,7 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
-                                        e.exerciseType.replaceAll('_', ' ').toUpperCase(),
+                                        translateEquipmentType(e.exerciseType),
                                         style: TextStyle(color: AppTheme.hintColor.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w600),
                                       ),
                                     ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/label_translations.dart';
 import '../domain/exercise_model.dart';
 
 class ExerciseDetailScreen extends StatelessWidget {
@@ -93,14 +94,14 @@ class ExerciseDetailScreen extends StatelessWidget {
                   Row(
                     children: [
                       _buildTag(
-                        exercise.muscleGroup.toUpperCase(),
+                        translateMuscleGroup(exercise.muscleGroup),
                         AppTheme.primaryColor,
                       ),
                       const SizedBox(width: 12),
                       _buildTag(
-                        (exercise.equipment ?? exercise.exerciseType)
-                            .replaceAll('_', ' ')
-                            .toUpperCase(),
+                        translateEquipmentType(
+                          exercise.equipment ?? exercise.exerciseType,
+                        ),
                         AppTheme.hintColor,
                       ),
                     ],

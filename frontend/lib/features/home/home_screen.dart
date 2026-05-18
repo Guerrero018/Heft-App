@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/utils/label_translations.dart';
 import '../auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../profile/profile_screen.dart';
@@ -509,7 +510,7 @@ class RoutineCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Extraer grupos musculares únicos para mostrar como etiquetas
     final muscleGroups = routine.exercises
-        .map((e) => _translateMuscle(e.muscleGroup))
+        .map((e) => translateMuscleGroup(e.muscleGroup))
         .toSet()
         .toList();
 
@@ -666,21 +667,6 @@ class RoutineCard extends ConsumerWidget {
     );
   }
 
-  String _translateMuscle(String muscle) {
-    const translations = {
-      'chest': 'Pecho',
-      'back': 'Espalda',
-      'shoulders': 'Hombros',
-      'biceps': 'Bíceps',
-      'triceps': 'Tríceps',
-      'quadriceps': 'Cuádriceps',
-      'hamstrings': 'Isquios',
-      'glutes': 'Glúteos',
-      'calves': 'Gemelos',
-      'abs': 'Abs',
-    };
-    return translations[muscle.toLowerCase()] ?? muscle;
-  }
 }
 
 class _MinimizedWorkoutBar extends ConsumerWidget {

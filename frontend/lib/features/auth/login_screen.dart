@@ -31,7 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
+        const SnackBar(content: Text('Rellena todos los campos')),
       );
       return;
     }
@@ -109,7 +109,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 style: const TextStyle(color: AppTheme.textColor),
                 decoration: const InputDecoration(
-                  hintText: 'Email address',
+                  hintText: 'Correo electrónico',
                   prefixIcon: Icon(
                     Icons.email_outlined,
                     color: AppTheme.hintColor,
@@ -122,7 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 obscureText: !_isPasswordVisible,
                 style: const TextStyle(color: AppTheme.textColor),
                 decoration: InputDecoration(
-                  hintText: 'Password',
+                  hintText: 'Contraseña',
                   prefixIcon: const Icon(
                     Icons.lock_outline,
                     color: AppTheme.hintColor,
@@ -156,7 +156,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     );
                   },
-                  child: const Text('Forgot Password?'),
+                  child: const Text('¿Olvidaste tu contraseña?'),
                 ),
               ),
               const SizedBox(height: 24),
@@ -186,7 +186,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           color: Colors.black,
                         ),
                       )
-                    : const Text('LOGIN'),
+                    : const Text('INICIAR SESIÓN'),
               ),
               const SizedBox(height: 24),
 
@@ -278,7 +278,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    "Don't have an account?",
+                    '¿No tienes cuenta?',
                     style: TextStyle(color: AppTheme.hintColor),
                   ),
                   TextButton(
@@ -290,7 +290,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       );
                     },
                     child: const Text(
-                      'Sign Up',
+                      'Regístrate',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),

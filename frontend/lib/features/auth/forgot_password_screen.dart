@@ -42,7 +42,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Future<void> _requestCode() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      _showSnackBar('Introduce un email valido', isError: true);
+      _showSnackBar('Introduce un email válido', isError: true);
       return;
     }
 
@@ -53,7 +53,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     if (response == null) {
       _showSnackBar(
-        ref.read(authProvider).error ?? 'No se pudo enviar el codigo',
+        ref.read(authProvider).error ?? 'No se pudo enviar el código',
         isError: true,
       );
       return;
@@ -210,7 +210,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 enabled: !_codeSent && !authState.isLoading,
                 style: const TextStyle(color: AppTheme.textColor),
                 decoration: const InputDecoration(
-                  hintText: 'Email',
+                  hintText: 'Correo electrónico',
                   prefixIcon: Icon(
                     Icons.email_outlined,
                     color: AppTheme.hintColor,
