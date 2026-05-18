@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/label_translations.dart';
 import '../data/exercise_provider.dart';
 import '../domain/exercise_model.dart';
 import 'create_exercise_screen.dart';
@@ -386,7 +387,7 @@ class _ExercisePickerBottomSheetState
                                             ],
                                           ),
                                           Text(
-                                            e.muscleGroup.toUpperCase(),
+                                            translateMuscleGroup(e.muscleGroup),
                                             style: const TextStyle(
                                               fontSize: 9,
                                               color: AppTheme.primaryColor,
@@ -481,7 +482,7 @@ class _ExercisePickerBottomSheetState
                                                 BorderRadius.circular(4),
                                           ),
                                           child: Text(
-                                            e.muscleGroup.toUpperCase(),
+                                            translateMuscleGroup(e.muscleGroup),
                                             style: const TextStyle(
                                               color: AppTheme.primaryColor,
                                               fontSize: 10,
@@ -502,9 +503,9 @@ class _ExercisePickerBottomSheetState
                                                 BorderRadius.circular(4),
                                           ),
                                           child: Text(
-                                            (e.equipment ?? e.exerciseType)
-                                                .replaceAll('_', ' ')
-                                                .toUpperCase(),
+                                            translateEquipmentType(
+                                              e.equipment ?? e.exerciseType,
+                                            ),
                                             style: TextStyle(
                                               color: AppTheme.hintColor
                                                   .withValues(alpha: 0.8),

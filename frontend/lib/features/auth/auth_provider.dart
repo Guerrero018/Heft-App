@@ -283,7 +283,7 @@ class AuthNotifier extends Notifier<AuthState> {
         }
       }
     } on DioException catch (e) {
-      String message = 'Registration failed';
+      String message = 'Error al registrarse';
       if (e.response != null) {
         if (e.response?.data is Map) {
           final data = e.response!.data as Map;
@@ -295,14 +295,14 @@ class AuthNotifier extends Notifier<AuthState> {
               (data['password'] != null ? data['password'][0] : null) ??
               data.toString();
         } else {
-          message = 'Server error: ${e.response?.statusCode}';
+          message = 'Error del servidor: ${e.response?.statusCode}';
         }
       } else {
-        message = 'Network error: ${e.message}';
+        message = 'Error de red: ${e.message}';
       }
       state = state.copyWith(isLoading: false, error: message);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Unexpected error: $e');
+      state = state.copyWith(isLoading: false, error: 'Error inesperado: $e');
     }
   }
 

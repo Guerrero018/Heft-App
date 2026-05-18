@@ -221,7 +221,7 @@ class _ExerciseDetailCard extends StatelessWidget {
             children: [
               const Expanded(child: Center(child: Text('SERIE', style: TextStyle(color: AppTheme.hintColor, fontSize: 10)))),
               const Expanded(child: Center(child: Text('PESO', style: TextStyle(color: AppTheme.hintColor, fontSize: 10)))),
-              const Expanded(child: Center(child: Text('REPS', style: TextStyle(color: AppTheme.hintColor, fontSize: 10)))),
+              const Expanded(child: Center(child: Text('REPET.', style: TextStyle(color: AppTheme.hintColor, fontSize: 10)))),
               if (sets.any((s) => s.rpe != null))
                 const Expanded(child: Center(child: Text('RPE', style: TextStyle(color: AppTheme.hintColor, fontSize: 10)))),
             ],

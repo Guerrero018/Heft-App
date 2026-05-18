@@ -136,7 +136,7 @@ class ProfileScreen extends ConsumerWidget {
                       children: [
                         _buildAchievementCard(
                           icon: Icons.emoji_events,
-                          title: '100kg Club',
+                          title: 'Club de los 100 kg',
                           subtitle: '(Banca)',
                           iconColor: Colors.orangeAccent,
                           circleColor: Colors.orangeAccent.withOpacity(0.1),

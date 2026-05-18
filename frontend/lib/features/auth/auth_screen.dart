@@ -237,9 +237,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 enabled: !_showPassword && !authState.isLoading,
-                decoration: const InputDecoration(
-                  hintText: 'Email',
-                  prefixIcon: Icon(Icons.email_outlined, color: AppTheme.hintColor),
+                decoration: InputDecoration(
+                  hintText: 'Correo electrónico',
+                  errorText: _emailError,
+                  prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.hintColor),
                 ),
                 style: const TextStyle(color: Colors.white),
               ),

@@ -761,7 +761,7 @@ class _ActiveExerciseCard extends ConsumerWidget {
                 const SizedBox(
                   width: 30,
                   child: Text(
-                    'Set',
+                    'Serie',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.hintColor,
@@ -798,7 +798,7 @@ class _ActiveExerciseCard extends ConsumerWidget {
                 const SizedBox(
                   width: 50,
                   child: Text(
-                    'Reps',
+                    'Repet.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.hintColor,

@@ -169,7 +169,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 enabled: !_codeSent && !authState.isLoading,
                 style: const TextStyle(color: AppTheme.textColor),
                 decoration: const InputDecoration(
-                  hintText: 'Email',
+                  hintText: 'Correo electrónico',
                   prefixIcon: Icon(
                     Icons.email_outlined,
                     color: AppTheme.hintColor,

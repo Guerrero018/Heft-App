@@ -55,12 +55,12 @@ class RoutineNotifier extends Notifier<RoutineState> {
     } on DioException catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: e.message ?? 'Error fetching routines',
+        error: e.message ?? 'Error al cargar las rutinas',
       );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: 'Unexpected error: $e',
+        error: 'Error inesperado: $e',
       );
     }
   }
@@ -75,7 +75,7 @@ class RoutineNotifier extends Notifier<RoutineState> {
       });
       await fetchRoutines();
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Failed to create routine: $e');
+      state = state.copyWith(isLoading: false, error: 'Error al crear la rutina: $e');
       rethrow;
     }
   }
@@ -90,7 +90,7 @@ class RoutineNotifier extends Notifier<RoutineState> {
       });
       await fetchRoutines();
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Failed to update routine: $e');
+      state = state.copyWith(isLoading: false, error: 'Error al actualizar la rutina: $e');
       rethrow;
     }
   }
@@ -101,7 +101,7 @@ class RoutineNotifier extends Notifier<RoutineState> {
       // Actualizamos el estado localmente o volvemos a hacer fetch
       await fetchRoutines();
     } catch (e) {
-      state = state.copyWith(error: 'Failed to delete routine: $e');
+      state = state.copyWith(error: 'Error al eliminar la rutina: $e');
       rethrow;
     }
   }

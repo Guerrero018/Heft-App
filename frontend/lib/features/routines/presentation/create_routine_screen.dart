@@ -253,7 +253,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
             children: [
               _buildInputColumn('Series', (val) => item.sets = int.tryParse(val) ?? 0, item.sets.toString()),
               const SizedBox(width: 16),
-              _buildInputColumn('Reps', (val) => item.reps = int.tryParse(val) ?? 0, item.reps.toString()),
+              _buildInputColumn('Repeticiones', (val) => item.reps = int.tryParse(val) ?? 0, item.reps.toString()),
               const SizedBox(width: 16),
               _buildInputColumn('Peso (kg)', (val) => item.weight = double.tryParse(val) ?? 0, item.weight.toString()),
             ],
