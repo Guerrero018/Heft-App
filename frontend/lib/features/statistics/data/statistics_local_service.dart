@@ -1,3 +1,4 @@
+import '../../../core/utils/workout_week_streak.dart';
 import '../../workouts/domain/workout_model.dart';
 import '../domain/muscle_map_config.dart';
 import '../domain/statistics_model.dart';
@@ -75,6 +76,12 @@ UserStatistics buildStatisticsFromWorkouts({
 }) {
   final periodKey = _periodDays.containsKey(apiPeriod) ? apiPeriod : 'week';
   final bounds = _periodBounds(periodKey);
+
+  final allSessionDates = <DateTime>{};
+  for (final session in workouts) {
+    if (!_sessionHasTraining(session)) continue;
+    allSessionDates.add(_dateOnly(session.date));
+  }
 
   final filtered = workouts.where((w) {
     if (!_sessionHasTraining(w)) return false;
@@ -209,7 +216,7 @@ UserStatistics buildStatisticsFromWorkouts({
       workoutDays: workoutDays,
       expectedWorkoutDays: expectedSessions,
       adherencePercent: adherencePercent,
-      streakDays: _computeStreak(sessionDates),
+      streakDays: computeWeekStreakWeekCount(allSessionDates, workoutDaysPerWeek),
     ),
     dailyVolume: dayKeys
         .map(
@@ -243,28 +250,6 @@ String _formatDayLabel(String isoDate) {
   final parts = isoDate.split('-');
   if (parts.length != 3) return isoDate;
   return '${parts[2]}/${parts[1]}';
-}
-
-int _computeStreak(Set<DateTime> sessionDates) {
-  if (sessionDates.isEmpty) return 0;
-
-  final daySet = sessionDates.map(_dateOnly).toSet();
-
-  var cursor = DateTime.now();
-  final today = _dateOnly(cursor);
-
-  if (!daySet.contains(today)) {
-    cursor = today.subtract(const Duration(days: 1));
-  } else {
-    cursor = today;
-  }
-
-  var streak = 0;
-  while (daySet.contains(cursor)) {
-    streak += 1;
-    cursor = cursor.subtract(const Duration(days: 1));
-  }
-  return streak;
 }
 
 class _ExerciseAgg {

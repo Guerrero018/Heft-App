@@ -97,15 +97,21 @@ class ProfileScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildStatItem('Peso', user?['weight'] != null 
-                        ? '${double.parse(user!['weight'].toString()).toStringAsFixed(1)} kg' 
-                        : '-- kg'),
-                    _buildStatItem('Altura', user?['height'] != null 
-                        ? '${double.parse(user!['height'].toString()).toInt()} cm' 
-                        : '-- cm'),
-                    _buildStatItem('Meta', user?['fitness_goal'] ?? 'Gana Músculo'),
+                    _buildStatItem(
+                      'Peso',
+                      user?['weight'] != null
+                          ? '${double.parse(user!['weight'].toString()).toStringAsFixed(1)} kg'
+                          : '-- kg',
+                    ),
+                    const SizedBox(width: 16),
+                    _buildStatItem(
+                      'Altura',
+                      user?['height'] != null
+                          ? '${double.parse(user!['height'].toString()).toInt()} cm'
+                          : '-- cm',
+                    ),
                   ],
                 ),
               ),
@@ -225,9 +231,12 @@ class ProfileScreen extends ConsumerWidget {
         border: Border.all(color: Colors.white10),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             value,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
@@ -237,6 +246,7 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 4),
           Text(
             label,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppTheme.hintColor,
               fontSize: 12,

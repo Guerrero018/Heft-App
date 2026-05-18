@@ -6,6 +6,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_message.dart';
 import '../auth/auth_provider.dart';
+import '../home/data/week_streak_provider.dart';
+import '../statistics/data/statistics_provider.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -20,6 +22,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _weightController;
   late TextEditingController _heightController;
   String? _selectedGoal;
+  int _daysPerWeek = 3;
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
 
@@ -38,6 +41,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (!_goals.contains(_selectedGoal)) {
        _selectedGoal = _goals.first;
     }
+    final days = (user?['workout_days_per_week'] as num?)?.toInt() ?? 3;
+    _daysPerWeek = days.clamp(1, 7);
   }
 
   @override
@@ -107,6 +112,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         'weight': double.tryParse(_weightController.text) ?? 0,
         'height': double.tryParse(_heightController.text) ?? 0,
         'fitness_goal': _selectedGoal,
+        'workout_days_per_week': _daysPerWeek,
       };
 
       await ref.read(authProvider.notifier).updateProfile(
@@ -117,6 +123,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (mounted) {
         final error = ref.read(authProvider).error;
         if (error == null) {
+          ref.invalidate(weekStreakProvider);
+          ref.invalidate(statisticsProvider);
           final messenger = ScaffoldMessenger.of(context);
           Navigator.of(context).pop();
           messenger.showSnackBar(
@@ -221,6 +229,44 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 32),
+              _buildSectionTitle('Entrenamientos por semana'),
+              const SizedBox(height: 8),
+              const Text(
+                'Define cuántos días quieres entrenar. Afecta tu racha y la adherencia.',
+                style: TextStyle(color: AppTheme.hintColor, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(7, (index) {
+                  final d = index + 1;
+                  final isSelected = _daysPerWeek == d;
+                  return GestureDetector(
+                    onTap: () => setState(() => _daysPerWeek = d),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.primaryColor : Colors.white10,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$d',
+                          style: TextStyle(
+                            color: isSelected ? Colors.black : Colors.white70,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
               ),
               const SizedBox(height: 32),
               _buildSectionTitle('Tu objetivo'),
