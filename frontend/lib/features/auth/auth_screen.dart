@@ -18,6 +18,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _showPassword = false;
   bool _isCheckingEmail = false;
+  String? _emailError;
   String? _loginError;
   @override
   void dispose() {
@@ -29,12 +30,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   void _handleContinue() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      AppMessage.showError(context, 'Introduce un email válido');
+      setState(() => _emailError = 'Introduce un email válido');
       return;
     }
 
     setState(() {
       _isCheckingEmail = true;
+      _emailError = null;
     });
 
     final exists = await ref.read(authProvider.notifier).checkEmail(email);
@@ -237,6 +239,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 enabled: !_showPassword && !authState.isLoading,
+                onChanged: (_) {
+                  if (_emailError != null) {
+                    setState(() => _emailError = null);
+                  }
+                },
                 decoration: InputDecoration(
                   hintText: 'Correo electrónico',
                   errorText: _emailError,
