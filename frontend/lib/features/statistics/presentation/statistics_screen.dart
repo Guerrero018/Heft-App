@@ -1,12 +1,21 @@
-import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../../core/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class StatisticsScreen extends StatelessWidget {
+import '../../../core/theme/app_theme.dart';
+import '../../exercises/data/exercise_provider.dart';
+import '../../exercises/domain/exercise_model.dart';
+import '../../exercises/presentation/exercise_picker_bottom_sheet.dart';
+import '../data/statistics_charts_preferences_provider.dart';
+import '../data/statistics_provider.dart';
+import '../domain/statistics_model.dart';
+import 'widgets/interactive_muscle_map.dart';
+
+class StatisticsScreen extends ConsumerWidget {
   const StatisticsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -60,523 +69,939 @@ class StatisticsScreen extends StatelessWidget {
   }
 }
 
-class _ChartsTab extends StatefulWidget {
+class _ChartsTab extends ConsumerStatefulWidget {
   const _ChartsTab();
 
   @override
-  State<_ChartsTab> createState() => _ChartsTabState();
+  ConsumerState<_ChartsTab> createState() => _ChartsTabState();
 }
 
-class _ChartsTabState extends State<_ChartsTab> {
-  String _selectedPeriod = 'Semana';
-  final List<String> _periods = ['Semana', 'Mes', '3 Meses', 'Año', 'Todo'];
-
+class _ChartsTabState extends ConsumerState<_ChartsTab> {
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Selector de Periodo
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _periods.map((period) {
-                final isSelected = _selectedPeriod == period;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(period),
-                    selected: isSelected,
-                    onSelected: (val) {
-                      if (val) setState(() => _selectedPeriod = period);
-                    },
-                    backgroundColor: AppTheme.cardColor,
-                    selectedColor: AppTheme.primaryColor,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.black : AppTheme.hintColor,
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    side: BorderSide.none,
-                    showCheckmark: false,
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          _buildSectionTitle('Progreso por Ejercicio'),
-          const SizedBox(height: 16),
-          _buildExerciseChart(
-            'Press de Banca',
-            _getMockSpotsForPeriod(_selectedPeriod, 70),
-          ),
-          const SizedBox(height: 16),
-          _buildExerciseChart(
-            'Sentadilla',
-            _getMockSpotsForPeriod(_selectedPeriod, 100),
-          ),
-          const SizedBox(height: 32),
-          _buildSectionTitle('Volumen Semanal'),
-          const SizedBox(height: 16),
-          const _VolumeBarChart(),
-          const SizedBox(height: 40),
-        ],
-      ),
-    );
-  }
+    final state = ref.watch(statisticsProvider);
 
-  List<FlSpot> _getMockSpotsForPeriod(String period, double base) {
-    // Return different mock data based on period to make it feel alive
-    switch (period) {
-      case 'Semana':
-        return [
-          FlSpot(0, base - 5), FlSpot(1, base - 2.5), FlSpot(2, base - 2.5),
-          FlSpot(3, base), FlSpot(4, base + 2.5), FlSpot(5, base + 5)
-        ];
-      case 'Mes':
-        return [
-          FlSpot(0, base - 10), FlSpot(1, base - 5), FlSpot(2, base - 2),
-          FlSpot(3, base), FlSpot(4, base + 5), FlSpot(5, base + 10)
-        ];
-      case '3 Meses':
-        return [
-          FlSpot(0, base - 20), FlSpot(1, base - 15), FlSpot(2, base - 8),
-          FlSpot(3, base - 2), FlSpot(4, base + 5), FlSpot(5, base + 15)
-        ];
-      default:
-        return [
-          FlSpot(0, base - 30), FlSpot(1, base - 20), FlSpot(2, base - 10),
-          FlSpot(3, base), FlSpot(4, base + 10), FlSpot(5, base + 25)
-        ];
+    if (state.isLoading && state.data == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppTheme.primaryColor),
+      );
     }
-  }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: AppTheme.textColor,
-      ),
-    );
-  }
-
-  Widget _buildExerciseChart(String title, List<FlSpot> spots) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    if (state.error != null && state.data == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppTheme.textColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Text(
-                '+12.5%',
-                style: TextStyle(color: Colors.greenAccent, fontSize: 12),
+              _ErrorBanner(message: state.error!),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref
+                    .read(statisticsProvider.notifier)
+                    .fetchStatistics(
+                      state.selectedPeriod,
+                      forceReload: true,
+                    ),
+                child: const Text('Reintentar'),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 150,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.white.withOpacity(0.05),
-                    strokeWidth: 1,
-                  ),
-                ),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: AppTheme.primaryColor,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: AppTheme.primaryColor.withOpacity(0.1),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MuscleMapTab extends StatelessWidget {
-  const _MuscleMapTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Distribución de Carga',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Basado en el volumen de entrenamiento de los últimos 7 días',
-            style: TextStyle(color: AppTheme.hintColor, fontSize: 12),
-          ),
-          const SizedBox(height: 24),
-          const _MuscleMapCard(),
-          const SizedBox(height: 32),
-          
-          // Leyenda
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.cardColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildLegendItem('Baja', AppTheme.primaryColor.withOpacity(0.2)),
-                _buildLegendItem('Media', AppTheme.primaryColor.withOpacity(0.5)),
-                _buildLegendItem('Alta', AppTheme.primaryColor),
-              ],
-            ),
-          ),
-          const SizedBox(height: 40),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
         ),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(color: AppTheme.hintColor, fontSize: 12)),
-      ],
-    );
-  }
-}
-
-class _MuscleMapCard extends StatelessWidget {
-  const _MuscleMapCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 300,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: [
-          // Simplified Body Silhouette (Front)
-          Expanded(
-            child: Column(
-              children: [
-                const Text('Frontal', style: TextStyle(color: AppTheme.hintColor, fontSize: 12)),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: CustomPaint(
-                    size: Size.infinite,
-                    painter: _BodyPainter(
-                      muscleLoads: {
-                        'chest': 0.9,
-                        'abs': 0.4,
-                        'quads': 0.7,
-                        'shoulders': 0.6,
-                        'biceps': 0.3,
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const VerticalDivider(color: Colors.white10),
-          // Simplified Body Silhouette (Back)
-          Expanded(
-            child: Column(
-              children: [
-                const Text('Posterior', style: TextStyle(color: AppTheme.hintColor, fontSize: 12)),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: CustomPaint(
-                    size: Size.infinite,
-                    painter: _BodyPainter(
-                      isBack: true,
-                      muscleLoads: {
-                        'back': 0.8,
-                        'triceps': 0.4,
-                        'glutes': 0.5,
-                        'hamstrings': 0.3,
-                        'calves': 0.2,
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BodyPainter extends CustomPainter {
-  final Map<String, double> muscleLoads;
-  final bool isBack;
-
-  _BodyPainter({required this.muscleLoads, this.isBack = false});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..style = PaintingStyle.fill;
-    final outlinePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = Colors.white.withOpacity(0.1)
-      ..strokeWidth = 1.0;
-
-    final w = size.width;
-    final h = size.height;
-
-    // Draw Silhouette Background
-    final silhouettePath = _getSilhouettePath(w, h);
-    canvas.drawPath(silhouettePath, Paint()..color = Colors.white.withOpacity(0.03));
-    canvas.drawPath(silhouettePath, outlinePaint);
-
-    if (isBack) {
-      _drawBackMuscles(canvas, w, h, paint);
-    } else {
-      _drawFrontMuscles(canvas, w, h, paint);
+      );
     }
-  }
 
-  Path _getSilhouettePath(double w, double h) {
-    final path = Path();
-    path.moveTo(w * 0.5, h * 0.05); // Head top
-    // Head
-    path.addOval(Rect.fromCenter(center: Offset(w * 0.5, h * 0.08), width: w * 0.12, height: h * 0.1));
-    
-    // Neck and Shoulders
-    path.moveTo(w * 0.45, h * 0.13);
-    path.lineTo(w * 0.3, h * 0.18); // Left shoulder
-    path.lineTo(w * 0.25, h * 0.4); // Left arm
-    path.lineTo(w * 0.32, h * 0.4); // Inner arm
-    path.lineTo(w * 0.35, h * 0.25); // Armpit
-    path.lineTo(w * 0.35, h * 0.5); // Waist
-    path.lineTo(w * 0.28, h * 0.9); // Left leg outer
-    path.lineTo(w * 0.45, h * 0.9); // Left leg inner
-    path.lineTo(w * 0.5, h * 0.55); // Crotch
-    path.lineTo(w * 0.55, h * 0.9); // Right leg inner
-    path.lineTo(w * 0.72, h * 0.9); // Right leg outer
-    path.lineTo(w * 0.65, h * 0.5); // Waist
-    path.lineTo(w * 0.65, h * 0.25); // Armpit
-    path.lineTo(w * 0.68, h * 0.4); // Inner arm
-    path.lineTo(w * 0.75, h * 0.4); // Right arm
-    path.lineTo(w * 0.7, h * 0.18); // Right shoulder
-    path.lineTo(w * 0.55, h * 0.13);
-    path.close();
-    return path;
-  }
+    final stats = state.data;
 
-  void _drawFrontMuscles(Canvas canvas, double w, double h, Paint paint) {
-    // Chest (Pecs)
-    _drawPath(canvas, muscleLoads['chest'], paint, Path()
-      ..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.36, h * 0.18, w * 0.13, h * 0.08), const Radius.circular(8)))
-      ..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.51, h * 0.18, w * 0.13, h * 0.08), const Radius.circular(8))));
-
-    // Abs
-    _drawPath(canvas, muscleLoads['abs'], paint, Path()
-      ..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.42, h * 0.28, w * 0.16, h * 0.15), const Radius.circular(4))));
-
-    // Shoulders (Delts)
-    _drawPath(canvas, muscleLoads['shoulders'], paint, Path()
-      ..addOval(Rect.fromLTWH(w * 0.28, h * 0.16, w * 0.1, h * 0.08))
-      ..addOval(Rect.fromLTWH(w * 0.62, h * 0.16, w * 0.1, h * 0.08)));
-
-    // Biceps
-    _drawPath(canvas, muscleLoads['biceps'], paint, Path()
-      ..addOval(Rect.fromLTWH(w * 0.26, h * 0.25, w * 0.07, h * 0.12))
-      ..addOval(Rect.fromLTWH(w * 0.67, h * 0.25, w * 0.07, h * 0.12)));
-
-    // Quads
-    _drawPath(canvas, muscleLoads['quads'], paint, Path()
-      ..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.33, h * 0.52, w * 0.14, h * 0.2), const Radius.circular(10)))
-      ..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.53, h * 0.52, w * 0.14, h * 0.2), const Radius.circular(10))));
-  }
-
-  void _drawBackMuscles(Canvas canvas, double w, double h, Paint paint) {
-    // Back (Lats & Traps)
-    _drawPath(canvas, muscleLoads['back'], paint, Path()
-      ..moveTo(w * 0.35, h * 0.18)
-      ..lineTo(w * 0.65, h * 0.18)
-      ..lineTo(w * 0.62, h * 0.4)
-      ..lineTo(w * 0.38, h * 0.4)
-      ..close());
-
-    // Shoulders
-    _drawPath(canvas, muscleLoads['shoulders'], paint, Path()
-      ..addOval(Rect.fromLTWH(w * 0.28, h * 0.16, w * 0.1, h * 0.08))
-      ..addOval(Rect.fromLTWH(w * 0.62, h * 0.16, w * 0.1, h * 0.08)));
-
-    // Triceps
-    _drawPath(canvas, muscleLoads['triceps'], paint, Path()
-      ..addOval(Rect.fromLTWH(w * 0.25, h * 0.25, w * 0.07, h * 0.12))
-      ..addOval(Rect.fromLTWH(w * 0.68, h * 0.25, w * 0.07, h * 0.12)));
-
-    // Glutes
-    _drawPath(canvas, muscleLoads['glutes'], paint, Path()
-      ..addRRect(RRect.fromRectAndCorners(
-        Rect.fromLTWH(w * 0.35, h * 0.48, w * 0.3, h * 0.08),
-        bottomLeft: const Radius.circular(15),
-        bottomRight: const Radius.circular(15),
-      )));
-
-    // Hamstrings
-    _drawPath(canvas, muscleLoads['hamstrings'], paint, Path()
-      ..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.33, h * 0.58, w * 0.14, h * 0.18), const Radius.circular(8)))
-      ..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.53, h * 0.58, w * 0.14, h * 0.18), const Radius.circular(8))));
-
-    // Calves
-    _drawPath(canvas, muscleLoads['calves'], paint, Path()
-      ..addOval(Rect.fromLTWH(w * 0.37, h * 0.78, w * 0.08, h * 0.1))
-      ..addOval(Rect.fromLTWH(w * 0.55, h * 0.78, w * 0.08, h * 0.1)));
-  }
-
-  void _drawPath(Canvas canvas, double? load, Paint paint, Path path) {
-    final value = load ?? 0.0;
-    if (value > 0) {
-      paint.color = AppTheme.primaryColor.withOpacity(0.1 + (value * 0.9));
-      canvas.drawPath(path, paint);
-      
-      // Glow effect for high load
-      if (value > 0.7) {
-        final glowPaint = Paint()
-          ..color = AppTheme.primaryColor.withOpacity(0.2)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-        canvas.drawPath(path, glowPaint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-class _VolumeBarChart extends StatelessWidget {
-  const _VolumeBarChart();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 250,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: 100,
-          barTouchData: BarTouchData(enabled: false),
-          titlesData: FlTitlesData(
-            show: true,
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  const titles = ['Pecho', 'Esp.', 'Homb.', 'Pier.', 'Bra.'];
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      titles[value.toInt()],
-                      style: const TextStyle(color: AppTheme.hintColor, fontSize: 10),
-                    ),
-                  );
-                },
+    return RefreshIndicator(
+      color: AppTheme.primaryColor,
+      onRefresh: () => ref
+          .read(statisticsProvider.notifier)
+          .fetchStatistics(state.selectedPeriod, forceReload: true),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (state.isLoading)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: LinearProgressIndicator(
+                  color: AppTheme.primaryColor,
+                  backgroundColor: AppTheme.cardColor,
+                ),
               ),
+            _PeriodSelector(
+              selectedPeriod: state.selectedPeriod,
+              onPeriodSelected: (period) => ref
+                  .read(statisticsProvider.notifier)
+                  .fetchStatistics(period),
             ),
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          ),
-          gridData: const FlGridData(show: false),
-          borderData: FlBorderData(show: false),
-          barGroups: [
-            _makeGroupData(0, 85),
-            _makeGroupData(1, 65),
-            _makeGroupData(2, 45),
-            _makeGroupData(3, 90),
-            _makeGroupData(4, 30),
+            const SizedBox(height: 24),
+            if (stats != null) ...[
+              _SummaryGrid(summary: stats.summary),
+              const SizedBox(height: 24),
+              if (!stats.hasData) ...[
+                _buildEmptyState(stats.periodLabel),
+                const SizedBox(height: 24),
+              ],
+              _ExerciseChartsSection(
+                exercises: stats.exerciseProgress,
+              ),
+            ],
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  BarChartGroupData _makeGroupData(int x, double y) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          color: AppTheme.primaryColor,
-          width: 16,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-          backDrawRodData: BackgroundBarChartRodData(
-            show: true,
-            toY: 100,
-            color: Colors.white.withOpacity(0.05),
+  Widget _buildEmptyState(String periodLabel) {
+    return _buildHintCard(
+      'No hay entrenamientos en $periodLabel. '
+      'Prueba con «Mes», «Año» o «Todo», o finaliza una sesión desde Inicio.',
+    );
+  }
+
+  Widget _buildHintCard(String message) => _StatisticsHintCard(message: message);
+}
+
+class _PeriodSelector extends StatelessWidget {
+  static const periods = ['Semana', 'Mes', '3 Meses', 'Año', 'Todo'];
+
+  final String selectedPeriod;
+  final ValueChanged<String> onPeriodSelected;
+
+  const _PeriodSelector({
+    required this.selectedPeriod,
+    required this.onPeriodSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: periods.map((period) {
+          final isSelected = selectedPeriod == period;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(period),
+              selected: isSelected,
+              onSelected: (_) => onPeriodSelected(period),
+              backgroundColor: AppTheme.cardColor,
+              selectedColor: AppTheme.primaryColor,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.black : AppTheme.hintColor,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              side: BorderSide.none,
+              showCheckmark: false,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _ExerciseChartsSection extends ConsumerWidget {
+  final List<ExerciseProgress> exercises;
+
+  const _ExerciseChartsSection({required this.exercises});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pinned = ref.watch(pinnedExerciseChartsProvider);
+    final progressById = {for (final e in exercises) e.exerciseId: e};
+    final catalogById = {
+      for (final e in ref.watch(exerciseProvider).exercises) e.id: e,
+    };
+
+    final pinnedCharts = <ExerciseProgress>[];
+    for (final pinnedRef in pinned) {
+      final id = pinnedRef.exerciseId;
+      if (progressById.containsKey(id)) {
+        pinnedCharts.add(progressById[id]!);
+        continue;
+      }
+
+      final catalog = catalogById[id];
+      final name = pinnedRef.exerciseName.isNotEmpty
+          ? pinnedRef.exerciseName
+          : (catalog?.name ?? 'Ejercicio');
+      final muscle = pinnedRef.muscleGroup.isNotEmpty
+          ? pinnedRef.muscleGroup
+          : (catalog?.muscleGroup ?? '');
+
+      pinnedCharts.add(
+        ExerciseProgress(
+          exerciseId: id,
+          exerciseName: name,
+          muscleGroup: muscle,
+          muscleGroupLabel: muscle,
+          trendPercent: 0,
+          dataPoints: const [],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Progreso por ejercicio',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textColor,
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => _showAddExerciseSheet(context, ref),
+              icon: const Icon(Icons.add_chart_outlined, size: 20),
+              label: const Text('Añadir gráfico'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (pinnedCharts.isEmpty)
+          _StatisticsHintCard(
+            message:
+                'Pulsa «Añadir gráfico» para fijar ejercicios. Se guardan hasta que los quites con ✕.',
+          )
+        else
+          ...pinnedCharts.map(
+            (ex) => Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _ExerciseProgressChart(
+                exercise: ex,
+                onRemove: () => ref
+                    .read(pinnedExerciseChartsProvider.notifier)
+                    .unpin(ex.exerciseId),
+              ),
+            ),
           ),
+      ],
+    );
+  }
+
+  void _showAddExerciseSheet(BuildContext context, WidgetRef ref) {
+    final pinnedIds =
+        ref.read(pinnedExerciseChartsProvider.notifier).pinnedIds;
+
+    showModalBottomSheet<Exercise>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => ExercisePickerBottomSheet(
+        title: 'Añadir gráfico',
+        excludeExerciseIds: pinnedIds,
+      ),
+    ).then((selected) async {
+      if (selected != null) {
+        await ref
+            .read(pinnedExerciseChartsProvider.notifier)
+            .pin(selected);
+      }
+    });
+  }
+}
+
+class _StatisticsHintCard extends StatelessWidget {
+  final String message;
+
+  const _StatisticsHintCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(color: AppTheme.hintColor, height: 1.4),
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFFFF7A7A);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(accent.withValues(alpha: 0.14), AppTheme.cardColor),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline_rounded, color: accent, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppTheme.textColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryGrid extends StatelessWidget {
+  final StatisticsSummary summary;
+
+  const _SummaryGrid({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _SummaryCard(
+                label: 'Entrenamientos',
+                value: '${summary.totalWorkouts}',
+                icon: Icons.fitness_center,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _SummaryCard(
+                label: 'Volumen (kg)',
+                value: _formatVolume(summary.totalVolumeKg),
+                icon: Icons.analytics_outlined,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _SummaryCard(
+                label: 'Adherencia',
+                value: '${summary.adherencePercent}%',
+                icon: Icons.calendar_today_outlined,
+                subtitle:
+                    '${summary.workoutDays}/${summary.expectedWorkoutDays} días',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _SummaryCard(
+                label: 'Racha',
+                value: '${summary.streakDays}',
+                icon: Icons.local_fire_department,
+                subtitle: summary.streakDays == 1 ? 'día' : 'días',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _formatVolume(double v) {
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}k';
+    return v.toStringAsFixed(0);
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final String? subtitle;
+  final IconData icon;
+
+  const _SummaryCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppTheme.primaryColor, size: 22),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.textColor,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(color: AppTheme.hintColor, fontSize: 12),
+          ),
+          if (subtitle != null)
+            Text(
+              subtitle!,
+              style: TextStyle(
+                color: AppTheme.hintColor.withValues(alpha: 0.7),
+                fontSize: 11,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExerciseProgressChart extends StatelessWidget {
+  final ExerciseProgress exercise;
+  final VoidCallback? onRemove;
+
+  const _ExerciseProgressChart({
+    required this.exercise,
+    this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final spots = exercise.dataPoints
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value.maxWeight))
+        .toList();
+
+    final trend = exercise.trendPercent;
+    final trendColor =
+        trend >= 0 ? Colors.greenAccent : const Color(0xFFFF7A7A);
+    final trendPrefix = trend > 0 ? '+' : '';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  exercise.exerciseName,
+                  style: const TextStyle(
+                    color: AppTheme.textColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (spots.length >= 2)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text(
+                    '$trendPrefix${trend.toStringAsFixed(1)}%',
+                    style: TextStyle(color: trendColor, fontSize: 12),
+                  ),
+                ),
+              if (onRemove != null)
+                IconButton(
+                  onPressed: onRemove,
+                  icon: Icon(
+                    Icons.close,
+                    size: 20,
+                    color: AppTheme.hintColor.withValues(alpha: 0.8),
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  tooltip: 'Quitar gráfico',
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            exercise.muscleGroupLabel,
+            style: const TextStyle(color: AppTheme.hintColor, fontSize: 11),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 150,
+            child: exercise.dataPoints.isEmpty
+                ? Center(
+                    child: Text(
+                      'Sin datos en este periodo',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppTheme.hintColor.withValues(alpha: 0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
+                : spots.length < 2
+                ? Center(
+                    child: Text(
+                      'Necesitas al menos 2 sesiones para ver la tendencia',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppTheme.hintColor.withValues(alpha: 0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
+                : LineChart(
+                    LineChartData(
+                      minY: 0,
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          strokeWidth: 1,
+                        ),
+                      ),
+                      titlesData: const FlTitlesData(show: false),
+                      borderData: FlBorderData(show: false),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: spots,
+                          isCurved: true,
+                          color: AppTheme.primaryColor,
+                          barWidth: 3,
+                          isStrokeCapRound: true,
+                          dotData: const FlDotData(show: true),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MuscleVolumeBarChart extends StatelessWidget {
+  final List<MuscleVolumeItem> items;
+
+  const _MuscleVolumeBarChart({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const _EmptyChartPlaceholder(
+        message: 'Sin volumen por grupo muscular en este periodo.',
+      );
+    }
+
+    final maxVol = items.map((e) => e.volume).reduce((a, b) => a > b ? a : b);
+    final maxY = maxVol * 1.15;
+
+    return Container(
+      height: 250,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxY,
+          barTouchData: BarTouchData(enabled: false),
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                getTitlesWidget: (value, meta) {
+                  final i = value.toInt();
+                  if (i < 0 || i >= items.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final label = items[i].label;
+                  final short = label.length > 6
+                      ? '${label.substring(0, 5)}.'
+                      : label;
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      short,
+                      style: const TextStyle(
+                        color: AppTheme.hintColor,
+                        fontSize: 10,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          gridData: const FlGridData(show: false),
+          borderData: FlBorderData(show: false),
+          barGroups: List.generate(
+            items.length,
+            (i) => BarChartGroupData(
+              x: i,
+              barRods: [
+                BarChartRodData(
+                  toY: items[i].volume,
+                  color: AppTheme.primaryColor,
+                  width: 16,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(6),
+                  ),
+                  backDrawRodData: BackgroundBarChartRodData(
+                    show: true,
+                    toY: maxY,
+                    color: Colors.white.withValues(alpha: 0.05),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DailyVolumeChart extends StatelessWidget {
+  final List<DailyVolumePoint> points;
+
+  const _DailyVolumeChart({required this.points});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxVol = points.map((e) => e.volume).reduce((a, b) => a > b ? a : b);
+    final maxY = maxVol * 1.15;
+
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxY,
+          barTouchData: BarTouchData(enabled: false),
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 24,
+                getTitlesWidget: (value, meta) {
+                  final i = value.toInt();
+                  if (i < 0 || i >= points.length) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      points[i].label,
+                      style: const TextStyle(
+                        color: AppTheme.hintColor,
+                        fontSize: 10,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          gridData: const FlGridData(show: false),
+          borderData: FlBorderData(show: false),
+          barGroups: List.generate(
+            points.length,
+            (i) => BarChartGroupData(
+              x: i,
+              barRods: [
+                BarChartRodData(
+                  toY: points[i].volume,
+                  color: AppTheme.primaryColor.withValues(alpha: 0.85),
+                  width: 14,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyChartPlaceholder extends StatelessWidget {
+  final String message;
+
+  const _EmptyChartPlaceholder({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 120,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: AppTheme.hintColor, fontSize: 13),
+      ),
+    );
+  }
+}
+
+class _MuscleMapTab extends ConsumerWidget {
+  const _MuscleMapTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(statisticsProvider);
+    final weekStats = state.muscleMapWeekData;
+
+    if (state.muscleMapLoading && weekStats == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppTheme.primaryColor),
+      );
+    }
+
+    if (state.muscleMapError != null && weekStats == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _ErrorBanner(message: state.muscleMapError!),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref
+                    .read(statisticsProvider.notifier)
+                    .fetchMuscleMapWeek(forceReload: true),
+                child: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final stats = weekStats;
+    final frontLoads = stats?.muscleMap.front ?? {};
+    final backLoads = stats?.muscleMap.back ?? {};
+    final hasWeekVolume = stats?.hasData ?? false;
+
+    return RefreshIndicator(
+      color: AppTheme.primaryColor,
+      onRefresh: () => ref
+          .read(statisticsProvider.notifier)
+          .fetchMuscleMapWeek(forceReload: true),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (state.muscleMapLoading)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: LinearProgressIndicator(
+                  color: AppTheme.primaryColor,
+                  backgroundColor: AppTheme.cardColor,
+                ),
+              ),
+            const Text(
+              'Fatiga muscular',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Carga acumulada en los últimos 7 días',
+              style: TextStyle(color: AppTheme.hintColor, fontSize: 12),
+            ),
+            const SizedBox(height: 24),
+            InteractiveMuscleMap(
+              frontLoads: frontLoads,
+              backLoads: backLoads,
+            ),
+            if (!hasWeekVolume) ...[
+              const SizedBox(height: 16),
+              const _StatisticsHintCard(
+                message:
+                    'No has registrado volumen en la última semana. El mapa se coloreará cuando entrenes.',
+              ),
+            ],
+            const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _MuscleMapLegendItem(
+                      label: 'Sin carga',
+                      color: Color(0xFFBDBDBD),
+                    ),
+                    _MuscleMapLegendItem(
+                      label: 'Baja',
+                      color: Color(0xFFF2E8B8),
+                    ),
+                    _MuscleMapLegendItem(
+                      label: 'Media',
+                      color: Color(0xFFE6D14D),
+                    ),
+                    _MuscleMapLegendItem(
+                      label: 'Alta',
+                      color: Color(0xFFD4A017),
+                    ),
+                  ],
+                ),
+              ),
+            if (stats != null && stats.volumeByMuscleGroup.isNotEmpty) ...[
+              const SizedBox(height: 32),
+              const Text(
+                'Volumen por grupo muscular (semana)',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _MuscleVolumeBarChart(items: stats.volumeByMuscleGroup),
+            ],
+            if (stats != null && stats.dailyVolume.isNotEmpty) ...[
+              const SizedBox(height: 32),
+              const Text(
+                'Volumen diario (semana)',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _DailyVolumeChart(points: stats.dailyVolume),
+            ],
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MuscleMapLegendItem extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _MuscleMapLegendItem({
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(color: AppTheme.hintColor, fontSize: 12),
         ),
       ],
     );
