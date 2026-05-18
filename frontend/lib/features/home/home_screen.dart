@@ -14,6 +14,8 @@ import '../live_workout/domain/live_workout_provider.dart';
 import '../live_workout/presentation/screens/live_workout_screen.dart';
 import '../statistics/presentation/statistics_screen.dart';
 import '../workouts/presentation/screens/workout_history_screen.dart';
+import 'data/week_streak_provider.dart';
+import 'presentation/widgets/week_streak_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -84,7 +86,10 @@ class _InicioTab extends ConsumerWidget {
 
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: () => ref.read(routineProvider.notifier).fetchRoutines(),
+        onRefresh: () async {
+          await ref.read(routineProvider.notifier).fetchRoutines();
+          ref.invalidate(weekStreakProvider);
+        },
         color: AppTheme.primaryColor,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -174,7 +179,8 @@ class _InicioTab extends ConsumerWidget {
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 12),
+              const WeekStreakCard(),
 
               // Empezar Entrenamiento Rápido
               _buildActionCard(

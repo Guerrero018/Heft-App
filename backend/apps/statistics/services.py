@@ -101,22 +101,64 @@ def _sets_queryset(user, start_date: date | None, end_date: date):
     return qs.filter(workout_session__date__lte=end_date)
 
 
-def _compute_streak(session_dates: list) -> int:
-    if not session_dates:
-        return 0
-    unique_days = sorted({d for d in session_dates}, reverse=True)
+def _week_start_monday(d: date) -> date:
+    return d - timedelta(days=d.weekday())
+
+
+def _compute_week_streak(session_dates: list, target_days_per_week: int) -> int:
+    """Semanas consecutivas cumpliendo el objetivo semanal de días de entreno."""
+    target = max(1, min(7, int(target_days_per_week or 1)))
+
+    days_by_week: dict[date, set[date]] = defaultdict(set)
+    for raw in session_dates:
+        if raw is None:
+            continue
+        day = raw if isinstance(raw, date) else raw.date()
+        week_start = _week_start_monday(day)
+        days_by_week[week_start].add(day)
+
     today = timezone.localdate()
+    current_week_start = _week_start_monday(today)
+    current_count = len(days_by_week.get(current_week_start, ()))
+    days_remaining = 7 - today.weekday()
+    still_achievable = current_count + days_remaining >= target
+
     streak = 0
-    cursor = today
-    day_set = set(unique_days)
+    week_start = current_week_start
+    for _ in range(520):
+        count = len(days_by_week.get(week_start, ()))
+        is_current_week = week_start == current_week_start
 
-    if today not in day_set:
-        cursor = today - timedelta(days=1)
+        if count >= target:
+            streak += 1
+        elif is_current_week and still_achievable:
+            pass
+        else:
+            break
 
-    while cursor in day_set:
-        streak += 1
-        cursor -= timedelta(days=1)
+        week_start -= timedelta(days=7)
+
     return streak
+
+
+def _all_streak_session_dates(user) -> list:
+    """Días con sesión completada y al menos una serie válida (histórico completo)."""
+    session_ids = (
+        WorkoutSet.objects.filter(
+            workout_session__user=user,
+            weight__gt=0,
+            reps__gt=0,
+        )
+        .values_list("workout_session_id", flat=True)
+        .distinct()
+    )
+    return list(
+        WorkoutSession.objects.filter(
+            user=user,
+            is_completed=True,
+            id__in=session_ids,
+        ).values_list("date", flat=True)
+    )
 
 
 def build_user_statistics(user, period: str = "week") -> dict[str, Any]:
@@ -292,7 +334,10 @@ def build_user_statistics(user, period: str = "week") -> dict[str, Any]:
             "workout_days": workout_days,
             "expected_workout_days": expected_sessions,
             "adherence_percent": adherence_percent,
-            "streak_days": _compute_streak(session_dates),
+            "streak_days": _compute_week_streak(
+                _all_streak_session_dates(user),
+                user.workout_days_per_week,
+            ),
         },
         "daily_volume": daily_volume,
         "volume_by_muscle_group": volume_by_muscle_group,

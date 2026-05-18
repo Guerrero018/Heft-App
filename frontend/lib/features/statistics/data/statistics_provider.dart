@@ -189,6 +189,10 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
     _cachedMuscleMap = muscleMap;
   }
 
+  Future<void> ensureWorkoutsForStreak() => _ensureBaseData();
+
+  List<WorkoutSession> get cachedWorkoutsForStreak => _cachedWorkouts ?? [];
+
   UserStatistics _buildStats(String apiPeriod) {
     final user = ref.read(authProvider).user;
     final daysPerWeek = (user?['workout_days_per_week'] as num?)?.toInt() ?? 3;

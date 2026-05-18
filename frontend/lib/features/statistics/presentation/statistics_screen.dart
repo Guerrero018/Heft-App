@@ -412,27 +412,15 @@ class _SummaryGrid extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _SummaryCard(
-                label: 'Adherencia',
-                value: '${summary.adherencePercent}%',
-                icon: Icons.calendar_today_outlined,
-                subtitle:
-                    '${summary.workoutDays}/${summary.expectedWorkoutDays} días',
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _SummaryCard(
-                label: 'Racha',
-                value: '${summary.streakDays}',
-                icon: Icons.local_fire_department,
-                subtitle: summary.streakDays == 1 ? 'día' : 'días',
-              ),
-            ),
-          ],
+        SizedBox(
+          width: double.infinity,
+          child: _SummaryCard(
+            label: 'Adherencia',
+            value: '${summary.adherencePercent}%',
+            icon: Icons.calendar_today_outlined,
+            subtitle:
+                '${summary.workoutDays}/${summary.expectedWorkoutDays} días',
+          ),
         ),
       ],
     );

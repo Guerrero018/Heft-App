@@ -20,6 +20,11 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'workout_days_per_week', 'workout_duration_minutes', 'is_onboarded', 'track_rpe'
         )
 
+    def validate_workout_days_per_week(self, value):
+        if value is not None and not 1 <= value <= 7:
+            raise serializers.ValidationError('Debe estar entre 1 y 7 días.')
+        return value
+
     def to_representation(self, instance):
         """Sobrescribimos para devolver siempre la URL completa/Cloudinary/Default"""
         ret = super().to_representation(instance)
