@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../domain/workout_model.dart';
+import 'workout_fetch_service.dart';
 
 class WorkoutHistoryState {
   final List<WorkoutSession> workouts;
@@ -29,7 +30,6 @@ class WorkoutHistoryState {
 class WorkoutHistoryNotifier extends Notifier<WorkoutHistoryState> {
   @override
   WorkoutHistoryState build() {
-    // Fetch workouts immediately when the provider is first used
     Future.microtask(() => fetchWorkouts());
     return WorkoutHistoryState();
   }
@@ -37,21 +37,8 @@ class WorkoutHistoryNotifier extends Notifier<WorkoutHistoryState> {
   Future<void> fetchWorkouts() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final response = await apiClient.get('workouts/', queryParameters: {
-        'ordering': '-start_time', // Most recent first
-      });
-      
-      if (response.data is List) {
-        final List<WorkoutSession> workouts = (response.data as List)
-            .map((json) => WorkoutSession.fromJson(json))
-            .toList();
-        state = state.copyWith(workouts: workouts, isLoading: false);
-      } else if (response.data is Map && response.data.containsKey('results')) {
-        final List<WorkoutSession> workouts = (response.data['results'] as List)
-            .map((json) => WorkoutSession.fromJson(json))
-            .toList();
-        state = state.copyWith(workouts: workouts, isLoading: false);
-      }
+      final workouts = await fetchAllWorkoutSessions();
+      state = state.copyWith(workouts: workouts, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }

@@ -10,5 +10,7 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
     ordering = ['-start_time'] # Orden por defecto: más reciente primero
 
     def get_queryset(self):
-        # Users can only see their own workouts
-        return WorkoutSession.objects.filter(user=self.request.user)
+        return (
+            WorkoutSession.objects.filter(user=self.request.user)
+            .prefetch_related("sets", "sets__exercise", "routine")
+        )
