@@ -13,7 +13,7 @@ class ProfileScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.user;
 
-    if (user == null && authState.isLoading) {
+    if (user == null && authState.isInitializing) {
       return const Scaffold(
         backgroundColor: AppTheme.surfaceColor,
         body: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_message.dart';
 import '../auth/auth_provider.dart';
 import '../home/home_screen.dart';
 
@@ -48,13 +49,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     };
 
     await ref.read(authProvider.notifier).updateProfile(data: data);
-    
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-        (route) => false,
-      );
+
+    if (!mounted) return;
+
+    final error = ref.read(authProvider).error;
+    if (error != null) {
+      AppMessage.showError(context, error);
+      return;
     }
+
+    AppMessage.showSuccess(context, 'Perfil configurado correctamente');
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+      (route) => false,
+    );
   }
 
   @override

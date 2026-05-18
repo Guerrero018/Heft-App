@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_message.dart';
 import '../../../auth/auth_provider.dart';
 import '../../../routines/domain/routine_model.dart';
 import '../../domain/live_workout_provider.dart';
@@ -328,10 +329,22 @@ class LiveWorkoutScreen extends ConsumerWidget {
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () async {
-                              await ref
+                              final saved = await ref
                                   .read(liveWorkoutProvider.notifier)
                                   .finishWorkout();
-                              if (context.mounted) Navigator.of(context).pop();
+                              if (!context.mounted) return;
+                              if (saved) {
+                                AppMessage.showSuccess(
+                                  context,
+                                  'Entrenamiento guardado correctamente',
+                                );
+                                Navigator.of(context).pop();
+                              } else {
+                                AppMessage.showError(
+                                  context,
+                                  'No se pudo guardar el entrenamiento',
+                                );
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.primaryColor,

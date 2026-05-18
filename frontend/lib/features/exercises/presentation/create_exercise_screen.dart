@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_message.dart';
 import '../data/exercise_provider.dart';
 
 class CreateExerciseScreen extends ConsumerStatefulWidget {
@@ -74,16 +75,15 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
       );
 
       if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ejercicio creado correctamente')),
+        messenger.showSnackBar(
+          AppMessage.snackBar('Ejercicio creado correctamente'),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al crear ejercicio: $e')),
-        );
+        AppMessage.showError(context, 'Error al crear ejercicio: $e');
       }
     }
   }

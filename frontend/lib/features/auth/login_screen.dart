@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_message.dart';
 import 'auth_provider.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
@@ -25,18 +26,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
-      );
+      AppMessage.showError(context, 'Rellena todos los campos');
       return;
     }
 
-    ref.read(authProvider.notifier).login(email, password);
+    await ref.read(authProvider.notifier).login(email, password);
+
+    if (!mounted) return;
+    final error = ref.read(authProvider).error;
+    if (error != null) {
+      AppMessage.showError(context, error);
+    }
   }
 
   @override
@@ -161,17 +166,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Show error message if any
-              if (ref.watch(authProvider).error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Text(
-                    ref.watch(authProvider).error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red, fontSize: 14),
-                  ),
-                ),
-
               // Login Button
               ElevatedButton(
                 onPressed: ref.watch(authProvider).isLoading
@@ -226,8 +220,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: OutlinedButton(
                   onPressed: () async {
                     await ref.read(authProvider.notifier).loginWithGoogle();
+                    if (!mounted) return;
                     final authState = ref.read(authProvider);
-                    if (mounted && authState.isAuthenticated && !authState.isOnboarded) {
+                    if (authState.error != null) {
+                      AppMessage.showError(context, authState.error!);
+                      return;
+                    }
+                    if (authState.isAuthenticated && !authState.isOnboarded) {
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
                           builder: (context) => const OnboardingScreen(),

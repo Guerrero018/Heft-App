@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_message.dart';
 import 'auth_provider.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
@@ -17,8 +18,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _showPassword = false;
   bool _isCheckingEmail = false;
-  String? _emailError;
-
+  String? _loginError;
   @override
   void dispose() {
     _emailController.dispose();
@@ -29,13 +29,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   void _handleContinue() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      setState(() => _emailError = 'Introduce un email válido');
+      AppMessage.showError(context, 'Introduce un email válido');
       return;
     }
 
     setState(() {
       _isCheckingEmail = true;
-      _emailError = null;
     });
 
     final exists = await ref.read(authProvider.notifier).checkEmail(email);
@@ -46,18 +45,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       if (exists == null) {
         // Hubo un error de conexión (el error ya se guardó en el provider)
         final error = ref.read(authProvider).error;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error ?? 'Error de conexión'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppMessage.showError(context, error ?? 'Error de conexión');
         return;
       }
 
       if (exists) {
         // El usuario existe, pedimos contraseña (Login)
-        setState(() => _showPassword = true);
+        setState(() {
+          _showPassword = true;
+          _loginError = null;
+        });
       } else {
         // Usuario nuevo, lo llevamos al registro directamente
         Navigator.of(context).push(
@@ -75,17 +72,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     if (password.isEmpty) return;
 
+    setState(() => _loginError = null);
+    ref.read(authProvider.notifier).clearError();
+
     await ref.read(authProvider.notifier).login(email, password);
-    
+
+    if (!mounted) return;
+
     final authState = ref.read(authProvider);
-    if (authState.error != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authState.error!),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    if (authState.error != null) {
+      setState(() {
+        _showPassword = true;
+        _loginError = authState.error;
+      });
     }
   }
 
@@ -165,7 +164,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ],
                 ),
                 child: OutlinedButton(
-                  onPressed: authState.isLoading ? null : () => ref.read(authProvider.notifier).loginWithGoogle(),
+                  onPressed: authState.isLoading
+                      ? null
+                      : () async {
+                          await ref
+                              .read(authProvider.notifier)
+                              .loginWithGoogle();
+                          if (!mounted) return;
+                          final state = ref.read(authProvider);
+                          if (state.error != null) {
+                            AppMessage.showError(context, state.error!);
+                          }
+                        },
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
                     padding: const EdgeInsets.symmetric(vertical: 18),
@@ -227,10 +237,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 enabled: !_showPassword && !authState.isLoading,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Email',
-                  errorText: _emailError,
-                  prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.hintColor),
+                  prefixIcon: Icon(Icons.email_outlined, color: AppTheme.hintColor),
                 ),
                 style: const TextStyle(color: Colors.white),
               ),
@@ -240,12 +249,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
+                  onChanged: (_) {
+                    if (_loginError != null) {
+                      setState(() => _loginError = null);
+                      ref.read(authProvider.notifier).clearError();
+                    }
+                  },
                   decoration: const InputDecoration(
                     hintText: 'Contraseña',
                     prefixIcon: Icon(Icons.lock_outline, color: AppTheme.hintColor),
                   ),
                   style: const TextStyle(color: Colors.white),
                 ),
+                if (_loginError != null) ...[
+                  const SizedBox(height: 12),
+                  AppMessage.banner(_loginError!, isError: true),
+                ],
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -260,7 +279,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               ),
                             );
                           },
-                    child: const Text('Forgot Password?'),
+                    child: const Text('¿Olvidaste tu contraseña?'),
                   ),
                 ),
               ],

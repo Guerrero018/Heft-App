@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_message.dart';
 import 'auth_provider.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -42,7 +43,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Future<void> _requestCode() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      _showSnackBar('Introduce un email valido', isError: true);
+      AppMessage.showError(context, 'Introduce un email válido');
       return;
     }
 
@@ -52,9 +53,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!mounted) return;
 
     if (response == null) {
-      _showSnackBar(
-        ref.read(authProvider).error ?? 'No se pudo enviar el codigo',
-        isError: true,
+      AppMessage.showError(
+        context,
+        ref.read(authProvider).error ?? 'No se pudo enviar el código',
       );
       return;
     }
@@ -63,20 +64,21 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       _codeSent = true;
     });
 
-    _showSnackBar(
+    AppMessage.showSuccess(
+      context,
       response['detail']?.toString() ?? 'Código enviado correctamente',
     );
   }
 
   Future<void> _confirmReset() async {
     if (_codeController.text.trim().length != 6) {
-      _showSnackBar('Introduce el código de 6 dígitos', isError: true);
+      AppMessage.showError(context, 'Introduce el código de 6 dígitos');
       return;
     }
 
     if (_newPasswordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
-      _showSnackBar('Completa la nueva contraseña dos veces', isError: true);
+      AppMessage.showError(context, 'Completa la nueva contraseña dos veces');
       return;
     }
 
@@ -90,61 +92,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!mounted) return;
 
     if (!success) {
-      _showSnackBar(
+      AppMessage.showError(
+        context,
         ref.read(authProvider).error ?? 'No se pudo actualizar la contraseña',
-        isError: true,
       );
       return;
     }
 
-    _showSnackBar('Contraseña actualizada. Ya puedes iniciar sesión.');
+    AppMessage.showSuccess(
+      context,
+      'Contraseña actualizada. Ya puedes iniciar sesión.',
+    );
     Navigator.of(context).pop(_emailController.text.trim());
-  }
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    final accentColor = isError
-        ? const Color(0xFFFF7A7A)
-        : const Color(0xFF7EE2A8);
-    final backgroundColor = Color.alphaBlend(
-      accentColor.withValues(alpha: 0.14),
-      AppTheme.cardColor,
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline_rounded : Icons.check_circle_rounded,
-              color: accentColor,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: AppTheme.textColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: backgroundColor,
-        behavior: SnackBarBehavior.floating,
-        elevation: 0,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: accentColor.withValues(alpha: 0.35),
-          ),
-        ),
-      ),
-    );
   }
 
   @override
