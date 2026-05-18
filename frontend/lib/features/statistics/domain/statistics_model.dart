@@ -72,20 +72,20 @@ class MuscleVolumeItem {
 
 class ExerciseProgressPoint {
   final String date;
-  final double maxWeight;
   final double volume;
+  final double maxWeight;
 
   ExerciseProgressPoint({
     required this.date,
-    required this.maxWeight,
     required this.volume,
+    required this.maxWeight,
   });
 
   factory ExerciseProgressPoint.fromJson(Map<String, dynamic> json) {
     return ExerciseProgressPoint(
       date: json['date'] ?? '',
-      maxWeight: (json['max_weight'] ?? 0).toDouble(),
       volume: (json['volume'] ?? 0).toDouble(),
+      maxWeight: (json['max_weight'] ?? 0).toDouble(),
     );
   }
 }
@@ -95,7 +95,8 @@ class ExerciseProgress {
   final String exerciseName;
   final String muscleGroup;
   final String muscleGroupLabel;
-  final double trendPercent;
+  final double volumeTrendPercent;
+  final double maxWeightTrendPercent;
   final List<ExerciseProgressPoint> dataPoints;
 
   ExerciseProgress({
@@ -103,7 +104,8 @@ class ExerciseProgress {
     required this.exerciseName,
     required this.muscleGroup,
     required this.muscleGroupLabel,
-    required this.trendPercent,
+    required this.volumeTrendPercent,
+    required this.maxWeightTrendPercent,
     required this.dataPoints,
   });
 
@@ -113,7 +115,12 @@ class ExerciseProgress {
       exerciseName: json['exercise_name'] ?? '',
       muscleGroup: json['muscle_group'] ?? '',
       muscleGroupLabel: json['muscle_group_label'] ?? '',
-      trendPercent: (json['trend_percent'] ?? 0).toDouble(),
+      volumeTrendPercent: (json['volume_trend_percent'] ??
+              json['trend_percent'] ??
+              0)
+          .toDouble(),
+      maxWeightTrendPercent:
+          (json['max_weight_trend_percent'] ?? 0).toDouble(),
       dataPoints: (json['data_points'] as List? ?? [])
           .map((e) => ExerciseProgressPoint.fromJson(e))
           .toList(),

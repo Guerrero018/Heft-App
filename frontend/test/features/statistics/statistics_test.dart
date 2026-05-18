@@ -52,14 +52,14 @@ void main() {
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pumpAndSettle();
 
-    expect(find.text('Entrenamientos'), findsOneWidget);
+    expect(find.text('Entrenos'), findsOneWidget);
     expect(find.text('Fatiga muscular'), findsNothing);
 
     await tester.tap(find.text('Mapa Muscular'));
     await tester.pumpAndSettle();
 
     expect(find.text('Fatiga muscular'), findsOneWidget);
-    expect(find.text('Entrenamientos'), findsNothing);
+    expect(find.text('Entrenos'), findsNothing);
   });
 
   testWidgets('Period selector is visible', (tester) async {

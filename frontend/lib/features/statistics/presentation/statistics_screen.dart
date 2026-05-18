@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/label_translations.dart';
 import '../../exercises/data/exercise_provider.dart';
 import '../../exercises/domain/exercise_model.dart';
 import '../../exercises/presentation/exercise_picker_bottom_sheet.dart';
@@ -16,6 +17,8 @@ class StatisticsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final chartScrubActive = ref.watch(chartScrubActiveProvider);
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -58,8 +61,11 @@ class StatisticsScreen extends ConsumerWidget {
             ),
           ),
         ),
-        body: const TabBarView(
-          children: [
+        body: TabBarView(
+          physics: chartScrubActive
+              ? const NeverScrollableScrollPhysics()
+              : const ClampingScrollPhysics(),
+          children: const [
             _ChartsTab(),
             _MuscleMapTab(),
           ],
@@ -246,7 +252,8 @@ class _ExerciseChartsSection extends ConsumerWidget {
           exerciseName: name,
           muscleGroup: muscle,
           muscleGroupLabel: muscle,
-          trendPercent: 0,
+          volumeTrendPercent: 0,
+          maxWeightTrendPercent: 0,
           dataPoints: const [],
         ),
       );
@@ -390,39 +397,39 @@ class _SummaryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _SummaryCard(
-                label: 'Entrenamientos',
-                value: '${summary.totalWorkouts}',
-                icon: Icons.fitness_center,
-              ),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _SummaryCard(
+              label: 'Entrenos',
+              value: '${summary.totalWorkouts}',
+              icon: Icons.fitness_center,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _SummaryCard(
-                label: 'Volumen (kg)',
-                value: _formatVolume(summary.totalVolumeKg),
-                icon: Icons.analytics_outlined,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: _SummaryCard(
-            label: 'Adherencia',
-            value: '${summary.adherencePercent}%',
-            icon: Icons.calendar_today_outlined,
-            subtitle:
-                '${summary.workoutDays}/${summary.expectedWorkoutDays} días',
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: _SummaryCard(
+              label: 'Volumen',
+              value: _formatVolume(summary.totalVolumeKg),
+              valueSuffix: ' kg',
+              icon: Icons.analytics_outlined,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _SummaryCard(
+              label: 'Adherencia',
+              value: '${summary.adherencePercent}',
+              valueSuffix: '%',
+              icon: Icons.calendar_today_outlined,
+              footnote:
+                  '${summary.workoutDays}/${summary.expectedWorkoutDays}',
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -435,51 +442,102 @@ class _SummaryGrid extends StatelessWidget {
 class _SummaryCard extends StatelessWidget {
   final String label;
   final String value;
-  final String? subtitle;
+  final String valueSuffix;
+  final String? footnote;
   final IconData icon;
 
   const _SummaryCard({
     required this.label,
     required this.value,
     required this.icon,
-    this.subtitle,
+    this.valueSuffix = '',
+    this.footnote,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: AppTheme.primaryColor, size: 22),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppTheme.textColor,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
+          Icon(icon, color: AppTheme.primaryColor, size: 18),
+          const SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: value,
+                  style: const TextStyle(
+                    color: AppTheme.textColor,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    height: 1.1,
+                  ),
+                ),
+                if (valueSuffix.isNotEmpty)
+                  TextSpan(
+                    text: valueSuffix,
+                    style: TextStyle(
+                      color: AppTheme.hintColor.withValues(alpha: 0.85),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
             ),
+            textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(color: AppTheme.hintColor, fontSize: 12),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppTheme.hintColor, fontSize: 10),
           ),
-          if (subtitle != null)
+          if (footnote != null) ...[
+            const SizedBox(height: 2),
             Text(
-              subtitle!,
+              footnote!,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppTheme.hintColor.withValues(alpha: 0.7),
-                fontSize: 11,
+                color: AppTheme.hintColor.withValues(alpha: 0.55),
+                fontSize: 9,
               ),
             ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _MuscleGroupChip extends StatelessWidget {
+  final String muscleGroup;
+
+  const _MuscleGroupChip({required this.muscleGroup});
+
+  @override
+  Widget build(BuildContext context) {
+    if (muscleGroup.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        translateMuscleGroup(muscleGroup).toUpperCase(),
+        style: const TextStyle(
+          color: AppTheme.primaryColor,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -496,17 +554,6 @@ class _ExerciseProgressChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spots = exercise.dataPoints
-        .asMap()
-        .entries
-        .map((e) => FlSpot(e.key.toDouble(), e.value.maxWeight))
-        .toList();
-
-    final trend = exercise.trendPercent;
-    final trendColor =
-        trend >= 0 ? Colors.greenAccent : const Color(0xFFFF7A7A);
-    final trendPrefix = trend > 0 ? '+' : '';
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -528,14 +575,6 @@ class _ExerciseProgressChart extends StatelessWidget {
                   ),
                 ),
               ),
-              if (spots.length >= 2)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Text(
-                    '$trendPrefix${trend.toStringAsFixed(1)}%',
-                    style: TextStyle(color: trendColor, fontSize: 12),
-                  ),
-                ),
               if (onRemove != null)
                 IconButton(
                   onPressed: onRemove,
@@ -553,68 +592,412 @@ class _ExerciseProgressChart extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            exercise.muscleGroupLabel,
-            style: const TextStyle(color: AppTheme.hintColor, fontSize: 11),
+          const SizedBox(height: 8),
+          _MuscleGroupChip(muscleGroup: exercise.muscleGroup),
+          const SizedBox(height: 20),
+          _ExerciseMetricLineChart(
+            label: 'Volumen por sesión',
+            trendPercent: exercise.volumeTrendPercent,
+            values: exercise.dataPoints.map((p) => p.volume).toList(),
+            dates: exercise.dataPoints.map((p) => p.date).toList(),
+            lineColor: AppTheme.primaryColor,
+            fillColor: AppTheme.primaryColor.withValues(alpha: 0.14),
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 150,
-            child: exercise.dataPoints.isEmpty
-                ? Center(
-                    child: Text(
-                      'Sin datos en este periodo',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppTheme.hintColor.withValues(alpha: 0.8),
-                        fontSize: 12,
-                      ),
-                    ),
-                  )
-                : spots.length < 2
-                ? Center(
-                    child: Text(
-                      'Necesitas al menos 2 sesiones para ver la tendencia',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppTheme.hintColor.withValues(alpha: 0.8),
-                        fontSize: 12,
-                      ),
-                    ),
-                  )
-                : LineChart(
-                    LineChartData(
-                      minY: 0,
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        getDrawingHorizontalLine: (value) => FlLine(
-                          color: Colors.white.withValues(alpha: 0.05),
-                          strokeWidth: 1,
-                        ),
-                      ),
-                      titlesData: const FlTitlesData(show: false),
-                      borderData: FlBorderData(show: false),
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: spots,
-                          isCurved: true,
-                          color: AppTheme.primaryColor,
-                          barWidth: 3,
-                          isStrokeCapRound: true,
-                          dotData: const FlDotData(show: true),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+          const SizedBox(height: 20),
+          _ExerciseMetricLineChart(
+            label: 'Peso máximo',
+            trendPercent: exercise.maxWeightTrendPercent,
+            values: exercise.dataPoints.map((p) => p.maxWeight).toList(),
+            dates: exercise.dataPoints.map((p) => p.date).toList(),
+            lineColor: const Color(0xFFB5C04A),
+            fillColor: const Color(0xFFB5C04A).withValues(alpha: 0.1),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ExerciseMetricLineChart extends ConsumerStatefulWidget {
+  static const Color _chartLabelColor = Color(0xFF6A6A6A);
+
+  final String label;
+  final double trendPercent;
+  final List<double> values;
+  final List<String> dates;
+  final Color lineColor;
+  final Color fillColor;
+
+  const _ExerciseMetricLineChart({
+    required this.label,
+    required this.trendPercent,
+    required this.values,
+    required this.dates,
+    required this.lineColor,
+    required this.fillColor,
+  });
+
+  @override
+  ConsumerState<_ExerciseMetricLineChart> createState() =>
+      _ExerciseMetricLineChartState();
+}
+
+class _ExerciseMetricLineChartState
+    extends ConsumerState<_ExerciseMetricLineChart> {
+  static const double _chartLeftPadding = 36;
+  static const double _chartRightPadding = 4;
+
+  int? _scrubIndex;
+  double? _touchedKg;
+  ScrollHoldController? _scrollHold;
+
+  static double _chartMaxY(List<double> values) {
+    if (values.isEmpty) return 1;
+    final max = values.reduce((a, b) => a > b ? a : b);
+    if (max <= 0) return 1;
+    return max * 1.12;
+  }
+
+  static double _yInterval(double maxY) {
+    if (maxY <= 0) return 1;
+    final rough = maxY / 3;
+    if (rough >= 1000) {
+      final step = (rough / 500).ceil() * 500.0;
+      return step > 0 ? step : 500;
+    }
+    if (rough >= 100) return (rough / 50).ceil() * 50.0;
+    if (rough >= 10) return (rough / 5).ceil() * 5.0;
+    if (rough >= 1) return (rough).ceilToDouble().clamp(1, double.infinity);
+    return (rough * 10).ceil() / 10;
+  }
+
+  static String _formatYLabel(double value) {
+    if (value >= 10000) {
+      return '${(value / 1000).toStringAsFixed(0)}k';
+    }
+    if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}k';
+    }
+    if (value >= 100) return value.round().toString();
+    if ((value - value.round()).abs() < 0.05) {
+      return value.round().toString();
+    }
+    return value.toStringAsFixed(1);
+  }
+
+  static String _formatTooltipKg(double value) {
+    if (value >= 1000) {
+      final rounded = value.round();
+      return rounded.toString().replaceAllMapped(
+            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (m) => '${m[1]}.',
+          );
+    }
+    if ((value - value.round()).abs() < 0.05) {
+      return value.round().toString();
+    }
+    return value.toStringAsFixed(1);
+  }
+
+  static String _formatSessionDate(String iso) {
+    final parts = iso.split('-');
+    if (parts.length == 3) return '${parts[2]}/${parts[1]}';
+    return iso;
+  }
+
+  int _indexFromLocalDx(double dx, double chartWidth, int spotCount) {
+    if (spotCount <= 1) return 0;
+    final plotWidth = chartWidth - _chartLeftPadding - _chartRightPadding;
+    if (plotWidth <= 0) return 0;
+    final t = ((dx - _chartLeftPadding) / plotWidth).clamp(0.0, 1.0);
+    return (t * (spotCount - 1)).round().clamp(0, spotCount - 1);
+  }
+
+  void _applyScrub(int index) {
+    if (index < 0 || index >= widget.values.length) return;
+    final kg = widget.values[index];
+    if (_scrubIndex == index && _touchedKg == kg) return;
+    setState(() {
+      _scrubIndex = index;
+      _touchedKg = kg;
+    });
+  }
+
+  void _onPointerDown(PointerDownEvent event, double chartWidth) {
+    if (widget.values.length < 2) return;
+    ref.read(chartScrubActiveProvider.notifier).setActive(true);
+    _scrollHold?.cancel();
+    final scrollable = Scrollable.maybeOf(context);
+    if (scrollable != null) {
+      _scrollHold = scrollable.position.hold(() {});
+    }
+    _applyScrub(_indexFromLocalDx(event.localPosition.dx, chartWidth, widget.values.length));
+  }
+
+  void _onPointerMove(PointerMoveEvent event, double chartWidth) {
+    if (widget.values.length < 2) return;
+    _applyScrub(_indexFromLocalDx(event.localPosition.dx, chartWidth, widget.values.length));
+  }
+
+  void _endScrub() {
+    ref.read(chartScrubActiveProvider.notifier).setActive(false);
+    _scrollHold?.cancel();
+    _scrollHold = null;
+    if (_scrubIndex == null && _touchedKg == null) return;
+    setState(() {
+      _scrubIndex = null;
+      _touchedKg = null;
+    });
+  }
+
+  @override
+  void dispose() {
+    ref.read(chartScrubActiveProvider.notifier).setActive(false);
+    _scrollHold?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final values = widget.values;
+    final dates = widget.dates;
+    final spots = values
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value))
+        .toList();
+
+    final chartMaxY = _chartMaxY(values);
+    final yInterval = _yInterval(chartMaxY);
+
+    final trendColor =
+        widget.trendPercent >= 0 ? Colors.greenAccent : const Color(0xFFFF7A7A);
+    final trendPrefix = widget.trendPercent > 0 ? '+' : '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${widget.label} (kg)',
+                style: const TextStyle(
+                  color: AppTheme.hintColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (_touchedKg != null)
+              Text(
+                '${_formatTooltipKg(_touchedKg!)} kg',
+                style: TextStyle(
+                  color: widget.lineColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            else if (spots.length >= 2)
+              Text(
+                '$trendPrefix${widget.trendPercent.toStringAsFixed(1)}%',
+                style: TextStyle(color: trendColor, fontSize: 12),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 128,
+          child: values.isEmpty
+              ? Center(
+                  child: Text(
+                    'Sin datos en este periodo',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppTheme.hintColor.withValues(alpha: 0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                )
+              : spots.length < 2
+                  ? Center(
+                      child: Text(
+                        'Necesitas al menos 2 sesiones para ver la tendencia',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppTheme.hintColor.withValues(alpha: 0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    )
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final chartWidth = constraints.maxWidth;
+                        final scrubIndex = _scrubIndex;
+                        final barData = LineChartBarData(
+                          spots: spots,
+                          isCurved: true,
+                          color: widget.lineColor,
+                          barWidth: 2.5,
+                          isStrokeCapRound: true,
+                          dotData: const FlDotData(show: false),
+                          showingIndicators: scrubIndex != null
+                              ? [scrubIndex]
+                              : const [],
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: widget.fillColor,
+                          ),
+                        );
+
+                        return Listener(
+                          behavior: HitTestBehavior.opaque,
+                          onPointerDown: (e) => _onPointerDown(e, chartWidth),
+                          onPointerMove: (e) => _onPointerMove(e, chartWidth),
+                          onPointerUp: (_) => _endScrub(),
+                          onPointerCancel: (_) => _endScrub(),
+                          child: LineChart(
+                            LineChartData(
+                              minY: 0,
+                              maxY: chartMaxY,
+                              showingTooltipIndicators: scrubIndex != null
+                                  ? [
+                                      ShowingTooltipIndicators([
+                                        LineBarSpot(
+                                          barData,
+                                          0,
+                                          spots[scrubIndex],
+                                        ),
+                                      ]),
+                                    ]
+                                  : const [],
+                              gridData: FlGridData(
+                                show: true,
+                                drawVerticalLine: false,
+                                horizontalInterval: yInterval,
+                                getDrawingHorizontalLine: (value) => FlLine(
+                                  color: Colors.white.withValues(alpha: 0.04),
+                                  strokeWidth: 1,
+                                ),
+                              ),
+                              titlesData: FlTitlesData(
+                                leftTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    reservedSize: _chartLeftPadding,
+                                    interval: yInterval,
+                                    getTitlesWidget: (value, meta) {
+                                      if (value < 0 ||
+                                          value > chartMaxY + 0.01) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(right: 4),
+                                        child: Text(
+                                          _formatYLabel(value),
+                                          style: const TextStyle(
+                                            color: _ExerciseMetricLineChart
+                                                ._chartLabelColor,
+                                            fontSize: 9,
+                                            height: 1,
+                                          ),
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                topTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                rightTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                bottomTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                              ),
+                              borderData: FlBorderData(show: false),
+                              lineTouchData: LineTouchData(
+                                enabled: true,
+                                handleBuiltInTouches: false,
+                                getTouchedSpotIndicator:
+                                    (barData, spotIndexes) {
+                                  return spotIndexes.map((index) {
+                                    return TouchedSpotIndicatorData(
+                                      FlLine(
+                                        color: widget.lineColor.withValues(
+                                          alpha: 0.4,
+                                        ),
+                                        strokeWidth: 1.5,
+                                        dashArray: [5, 4],
+                                      ),
+                                      FlDotData(
+                                        show: true,
+                                        getDotPainter: (
+                                          spot,
+                                          percent,
+                                          bar,
+                                          i,
+                                        ) =>
+                                            FlDotCirclePainter(
+                                          radius: 5,
+                                          color: widget.lineColor,
+                                          strokeWidth: 2,
+                                          strokeColor: AppTheme.surfaceColor,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList();
+                                },
+                                touchTooltipData: LineTouchTooltipData(
+                                  tooltipBorderRadius: BorderRadius.circular(8),
+                                  tooltipPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  getTooltipColor: (_) =>
+                                      const Color(0xFF252525),
+                                  getTooltipItems: (touchedSpots) {
+                                    return touchedSpots.map((spot) {
+                                      final idx = spot.spotIndex;
+                                      final date =
+                                          idx >= 0 && idx < dates.length
+                                              ? _formatSessionDate(dates[idx])
+                                              : '';
+                                      return LineTooltipItem(
+                                        '${_formatTooltipKg(spot.y)} kg',
+                                        TextStyle(
+                                          color: widget.lineColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                        children: [
+                                          if (date.isNotEmpty)
+                                            TextSpan(
+                                              text: '\n$date',
+                                              style: TextStyle(
+                                                color: AppTheme.hintColor
+                                                    .withValues(alpha: 0.9),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.normal,
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    }).toList();
+                                  },
+                                ),
+                              ),
+                              lineBarsData: [barData],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+        ),
+      ],
     );
   }
 }

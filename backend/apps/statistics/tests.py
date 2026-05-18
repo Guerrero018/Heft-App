@@ -1,4 +1,5 @@
-from datetime import timedelta
+from datetime import date, datetime, timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -10,9 +11,17 @@ from apps.workouts.models import WorkoutSession, WorkoutSet
 
 User = get_user_model()
 
+_FIXED_TODAY = date(2026, 5, 15)
+
 
 class UserStatisticsTests(APITestCase):
     def setUp(self):
+        self._localdate_patcher = patch(
+            "apps.statistics.services.timezone.localdate",
+            return_value=_FIXED_TODAY,
+        )
+        self._localdate_patcher.start()
+
         self.user = User.objects.create_user(
             username="statsuser",
             email="stats@test.com",
@@ -31,10 +40,17 @@ class UserStatisticsTests(APITestCase):
         session = WorkoutSession.objects.create(
             user=self.user,
             name="Push",
-            start_time=timezone.now() - timedelta(days=1),
-            end_time=timezone.now() - timedelta(days=1) + timedelta(hours=1),
+            start_time=timezone.make_aware(
+                datetime.combine(_FIXED_TODAY, datetime.min.time()),
+            ),
+            end_time=timezone.make_aware(
+                datetime.combine(_FIXED_TODAY, datetime.min.time()),
+            )
+            + timedelta(hours=1),
             is_completed=True,
         )
+        # auto_now_add overwrites date on create; set explicitly for period bounds.
+        WorkoutSession.objects.filter(pk=session.pk).update(date=_FIXED_TODAY)
         WorkoutSet.objects.create(
             workout_session=session,
             exercise=self.exercise,
@@ -52,6 +68,9 @@ class UserStatisticsTests(APITestCase):
             is_completed=True,
         )
 
+    def tearDown(self):
+        self._localdate_patcher.stop()
+
     def test_statistics_requires_auth(self):
         self.client.force_authenticate(user=None)
         response = self.client.get("/api/statistics/")
@@ -68,5 +87,10 @@ class UserStatisticsTests(APITestCase):
         self.assertEqual(len(data["exercise_progress"]), 1)
         self.assertEqual(
             data["exercise_progress"][0]["exercise_name"], "Press Banca"
+        )
+        session_volume = 80 * 8 + 75 * 10
+        self.assertEqual(
+            data["exercise_progress"][0]["data_points"][0]["volume"],
+            session_volume,
         )
         self.assertIn("chest", data["muscle_map"]["front"])

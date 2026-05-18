@@ -261,12 +261,17 @@ def build_user_statistics(user, period: str = "week") -> dict[str, Any]:
     exercise_progress = []
     for ex in top_exercises:
         points = ex["points"]
-        trend = 0.0
+        volume_trend = 0.0
+        max_weight_trend = 0.0
         if len(points) >= 2:
+            first_v = points[0]["volume"]
+            last_v = points[-1]["volume"]
+            if first_v > 0:
+                volume_trend = round(((last_v - first_v) / first_v) * 100, 1)
             first_w = points[0]["max_weight"]
             last_w = points[-1]["max_weight"]
             if first_w > 0:
-                trend = round(((last_w - first_w) / first_w) * 100, 1)
+                max_weight_trend = round(((last_w - first_w) / first_w) * 100, 1)
 
         exercise_progress.append(
             {
@@ -276,7 +281,9 @@ def build_user_statistics(user, period: str = "week") -> dict[str, Any]:
                 "muscle_group_label": MUSCLE_GROUP_LABELS.get(
                     ex["muscle_group"], ex["muscle_group"]
                 ),
-                "trend_percent": trend,
+                "trend_percent": volume_trend,
+                "volume_trend_percent": volume_trend,
+                "max_weight_trend_percent": max_weight_trend,
                 "data_points": [
                     {
                         "date": p["date"],
