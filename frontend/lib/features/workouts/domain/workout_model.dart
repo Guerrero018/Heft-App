@@ -64,15 +64,36 @@ class WorkoutSession {
     this.sets = const [],
   });
 
+  /// Fecha calendario sin desfase por zona horaria (YYYY-MM-DD del API).
+  static DateTime parseDateField(dynamic value) {
+    if (value == null) return DateTime.now();
+    final raw = value.toString();
+    if (raw.length >= 10) {
+      final parts = raw.substring(0, 10).split('-');
+      if (parts.length == 3) {
+        return DateTime(
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        );
+      }
+    }
+    return DateTime.parse(raw);
+  }
+
   factory WorkoutSession.fromJson(Map<String, dynamic> json) {
     return WorkoutSession(
       id: json['id'],
       routineId: json['routine'],
       routineName: json['routine_name'],
       name: json['name'] ?? '',
-      date: json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
-      startTime: json['start_time'] != null ? DateTime.parse(json['start_time']) : DateTime.now(),
-      endTime: json['end_time'] != null ? DateTime.parse(json['end_time']) : null,
+      date: parseDateField(json['date']),
+      startTime: json['start_time'] != null
+          ? DateTime.parse(json['start_time'].toString())
+          : DateTime.now(),
+      endTime: json['end_time'] != null
+          ? DateTime.parse(json['end_time'].toString())
+          : null,
       notes: json['notes'] ?? '',
       isCompleted: json['is_completed'] ?? false,
       sets: (json['sets'] as List? ?? [])
@@ -81,17 +102,14 @@ class WorkoutSession {
     );
   }
 
-  // Helper method to calculate total volume
   double get totalVolume {
     return sets.fold(0, (sum, item) => sum + (item.weight * item.reps));
   }
 
-  // Helper method to get unique exercise count
   int get uniqueExercisesCount {
     return sets.map((s) => s.exerciseId).toSet().length;
   }
 
-  // Helper method to format duration
   String get duration {
     if (endTime == null) return '--';
     final diff = endTime!.difference(startTime);

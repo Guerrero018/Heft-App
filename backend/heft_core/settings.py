@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "apps.exercises",
     "apps.routines",
     "apps.users",
+    "apps.statistics",
     # Django Allauth (Social Auth)
     "django.contrib.sites",
     "allauth",
