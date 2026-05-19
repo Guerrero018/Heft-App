@@ -46,9 +46,19 @@ const _periodLabels = {
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
+/// Mapa muscular: semana natural (lunes–domingo), reinicia cada lunes a las 00:00.
+const _muscleMapPeriodKey = 'calendar_week';
+
 /// Mismo criterio que el historial: fecha de sesión dentro del rango.
-({DateTime? start, DateTime end}) _periodBounds(String periodKey) {
-  final today = _dateOnly(DateTime.now());
+({DateTime? start, DateTime end}) _periodBounds(
+  String periodKey, {
+  DateTime? referenceDate,
+}) {
+  final today = _dateOnly(referenceDate ?? DateTime.now());
+  if (periodKey == _muscleMapPeriodKey) {
+    final week = calendarWeekBounds(today);
+    return (start: week.start, end: week.end);
+  }
   final days = _periodDays[periodKey];
   if (days == null) {
     return (start: null, end: today);
@@ -68,14 +78,21 @@ bool _setCountsForStats(WorkoutSet set) => set.weight > 0 && set.reps > 0;
 bool _sessionHasTraining(WorkoutSession session) =>
     session.sets.any(_setCountsForStats);
 
+/// Periodo del API para el mapa muscular (semana calendario lunes–domingo).
+const muscleMapApiPeriod = _muscleMapPeriodKey;
+
 UserStatistics buildStatisticsFromWorkouts({
   required List<WorkoutSession> workouts,
   required Map<int, String> exerciseMuscleById,
   required String apiPeriod,
   required int workoutDaysPerWeek,
+  DateTime? referenceDate,
 }) {
-  final periodKey = _periodDays.containsKey(apiPeriod) ? apiPeriod : 'week';
-  final bounds = _periodBounds(periodKey);
+  final periodKey = _periodDays.containsKey(apiPeriod) ||
+          apiPeriod == _muscleMapPeriodKey
+      ? apiPeriod
+      : 'week';
+  final bounds = _periodBounds(periodKey, referenceDate: referenceDate);
 
   final allSessionDates = <DateTime>{};
   for (final session in workouts) {
@@ -131,12 +148,16 @@ UserStatistics buildStatisticsFromWorkouts({
     }
   }
 
-  final now = DateTime.now();
-  final daysInPeriod = _periodDays[periodKey] ??
+  final now = referenceDate ?? DateTime.now();
+  final daysInPeriod = periodKey == _muscleMapPeriodKey
+      ? 7
+      : (_periodDays[periodKey] ??
       _daysBetween(
-        sessionDates.isEmpty ? now : sessionDates.reduce((a, b) => a.isBefore(b) ? a : b),
-        now,
-      );
+            sessionDates.isEmpty
+                ? now
+                : sessionDates.reduce((a, b) => a.isBefore(b) ? a : b),
+            now,
+          ));
   final weeksInPeriod = (daysInPeriod / 7).clamp(1.0, double.infinity);
   final expectedSessions = (workoutDaysPerWeek * weeksInPeriod).round().clamp(1, 9999);
   final workoutDays = sessionDates.length;
@@ -207,7 +228,9 @@ UserStatistics buildStatisticsFromWorkouts({
 
   return UserStatistics(
     period: periodKey,
-    periodLabel: _periodLabels[periodKey] ?? 'Semana',
+    periodLabel: periodKey == _muscleMapPeriodKey
+        ? 'Esta semana'
+        : (_periodLabels[periodKey] ?? 'Semana'),
     periodStart: bounds.start != null ? _dayKey(bounds.start!) : null,
     periodEnd: _dayKey(bounds.end),
     summary: StatisticsSummary(

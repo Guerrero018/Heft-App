@@ -28,6 +28,13 @@ DateTime weekStartMonday(DateTime date) {
   return normalized.subtract(Duration(days: normalized.weekday - DateTime.monday));
 }
 
+/// Lunes a domingo de la semana que contiene [reference] (reinicia cada lunes).
+({DateTime start, DateTime end}) calendarWeekBounds([DateTime? reference]) {
+  final ref = reference ?? DateTime.now();
+  final monday = weekStartMonday(ref);
+  return (start: monday, end: monday.add(const Duration(days: 6)));
+}
+
 String _dayKey(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 

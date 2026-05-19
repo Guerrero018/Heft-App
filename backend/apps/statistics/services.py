@@ -8,6 +8,7 @@ from apps.workouts.models import WorkoutSession, WorkoutSet
 
 PERIOD_DAYS = {
     "week": 7,
+    "calendar_week": 7,
     "month": 30,
     "3months": 90,
     "year": 365,
@@ -73,6 +74,9 @@ def _resolve_period(period: str) -> tuple[str, datetime | None, datetime]:
 def _period_date_bounds(period_key: str) -> tuple[date | None, date]:
     """Rango inclusivo por fecha de sesión (alineado con el historial)."""
     today = timezone.localdate()
+    if period_key == "calendar_week":
+        start = _week_start_monday(today)
+        return start, start + timedelta(days=6)
     days = PERIOD_DAYS[period_key]
     if days is None:
         return None, today

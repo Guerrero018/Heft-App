@@ -1273,7 +1273,7 @@ class _MuscleMapTab extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Carga acumulada en los últimos 7 días',
+              'Carga de lunes a domingo (se reinicia cada lunes)',
               style: TextStyle(color: AppTheme.hintColor, fontSize: 12),
             ),
             const SizedBox(height: 24),
@@ -1285,7 +1285,7 @@ class _MuscleMapTab extends ConsumerWidget {
               const SizedBox(height: 16),
               const _StatisticsHintCard(
                 message:
-                    'No has registrado volumen en la última semana. El mapa se coloreará cuando entrenes.',
+                    'No has registrado volumen esta semana. El mapa se coloreará cuando entrenes.',
               ),
             ],
             const SizedBox(height: 16),

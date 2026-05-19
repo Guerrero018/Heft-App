@@ -68,7 +68,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
     await _ensureBaseData(forceReload: true);
     state = state.copyWith(
       data: _buildStats('month'),
-      muscleMapWeekData: _buildStats('week'),
+      muscleMapWeekData: _buildMuscleMapStats(),
       isLoading: false,
       muscleMapLoading: false,
       clearError: true,
@@ -122,7 +122,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
     try {
       await _ensureBaseData(forceReload: forceReload);
       state = state.copyWith(
-        muscleMapWeekData: _buildStats('week'),
+        muscleMapWeekData: _buildMuscleMapStats(),
         muscleMapLoading: false,
         clearMuscleMapError: true,
       );
@@ -130,7 +130,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
       debugPrint('Muscle map error: $e\n$stack');
       if (_cachedWorkouts != null) {
         state = state.copyWith(
-          muscleMapWeekData: _buildStats('week'),
+          muscleMapWeekData: _buildMuscleMapStats(),
           muscleMapLoading: false,
           clearMuscleMapError: true,
         );
@@ -200,6 +200,17 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
       workouts: _cachedWorkouts ?? [],
       exerciseMuscleById: _cachedMuscleMap ?? {},
       apiPeriod: apiPeriod,
+      workoutDaysPerWeek: daysPerWeek,
+    );
+  }
+
+  UserStatistics _buildMuscleMapStats() {
+    final user = ref.read(authProvider).user;
+    final daysPerWeek = (user?['workout_days_per_week'] as num?)?.toInt() ?? 3;
+    return buildStatisticsFromWorkouts(
+      workouts: _cachedWorkouts ?? [],
+      exerciseMuscleById: _cachedMuscleMap ?? {},
+      apiPeriod: muscleMapApiPeriod,
       workoutDaysPerWeek: daysPerWeek,
     );
   }
