@@ -17,6 +17,7 @@ PERIOD_DAYS = {
 
 PERIOD_LABELS = {
     "week": "Semana",
+    "calendar_week": "Esta semana",
     "month": "Mes",
     "3months": "3 Meses",
     "year": "Año",

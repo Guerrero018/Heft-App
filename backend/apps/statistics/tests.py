@@ -94,3 +94,13 @@ class UserStatisticsTests(APITestCase):
             session_volume,
         )
         self.assertIn("chest", data["muscle_map"]["front"])
+
+    def test_calendar_week_period_bounds(self):
+        response = self.client.get("/api/statistics/?period=calendar_week")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["period"], "calendar_week")
+        # Lunes 11 may – domingo 17 may 2026 (today fijado al 15)
+        self.assertEqual(data["period_start"], "2026-05-11")
+        self.assertEqual(data["period_end"], "2026-05-17")
+        self.assertEqual(data["summary"]["total_workouts"], 1)

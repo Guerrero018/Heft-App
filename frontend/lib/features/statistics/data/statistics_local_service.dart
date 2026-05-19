@@ -81,18 +81,31 @@ bool _sessionHasTraining(WorkoutSession session) =>
 /// Periodo del API para el mapa muscular (semana calendario lunes–domingo).
 const muscleMapApiPeriod = _muscleMapPeriodKey;
 
+/// Volumen en kg por clave del mapa SVG (suma de grupos BD).
+Map<String, double> absoluteVolumeByMapKey(List<MuscleVolumeItem> items) {
+  final result = <String, double>{};
+  for (final item in items) {
+    final mapping = kDbToMuscleMapKey[item.muscleGroup];
+    if (mapping == null) continue;
+    result[mapping.$1] = (result[mapping.$1] ?? 0) + item.volume;
+  }
+  return result;
+}
+
 UserStatistics buildStatisticsFromWorkouts({
   required List<WorkoutSession> workouts,
   required Map<int, String> exerciseMuscleById,
   required String apiPeriod,
   required int workoutDaysPerWeek,
   DateTime? referenceDate,
+  ({DateTime? start, DateTime end})? boundsOverride,
 }) {
   final periodKey = _periodDays.containsKey(apiPeriod) ||
           apiPeriod == _muscleMapPeriodKey
       ? apiPeriod
       : 'week';
-  final bounds = _periodBounds(periodKey, referenceDate: referenceDate);
+  final bounds =
+      boundsOverride ?? _periodBounds(periodKey, referenceDate: referenceDate);
 
   final allSessionDates = <DateTime>{};
   for (final session in workouts) {

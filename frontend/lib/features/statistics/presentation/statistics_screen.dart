@@ -6,8 +6,11 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/label_translations.dart';
 import '../../exercises/data/exercise_provider.dart';
 import '../../exercises/domain/exercise_model.dart';
+import '../../routines/data/routine_provider.dart';
+import '../../routines/domain/routine_model.dart';
 import '../../exercises/presentation/exercise_picker_bottom_sheet.dart';
 import '../data/statistics_charts_preferences_provider.dart';
+import '../data/statistics_local_service.dart';
 import '../data/statistics_provider.dart';
 import '../domain/statistics_model.dart';
 import 'widgets/interactive_muscle_map.dart';
@@ -230,6 +233,7 @@ class _ExerciseChartsSection extends ConsumerWidget {
       for (final e in ref.watch(exerciseProvider).exercises) e.id: e,
     };
 
+    final pinnedIds = pinned.map((p) => p.exerciseId).toSet();
     final pinnedCharts = <ExerciseProgress>[];
     for (final pinnedRef in pinned) {
       final id = pinnedRef.exerciseId;
@@ -285,6 +289,8 @@ class _ExerciseChartsSection extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 12),
+        _SuggestedExercisesSection(pinnedIds: pinnedIds),
+        const SizedBox(height: 16),
         if (pinnedCharts.isEmpty)
           _StatisticsHintCard(
             message:
@@ -328,6 +334,80 @@ class _ExerciseChartsSection extends ConsumerWidget {
             .pin(selected);
       }
     });
+  }
+}
+
+class _SuggestedExercisesSection extends ConsumerWidget {
+  final Set<int> pinnedIds;
+
+  const _SuggestedExercisesSection({required this.pinnedIds});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final routineState = ref.watch(routineProvider);
+    if (routineState.routines.isEmpty && !routineState.isLoading) {
+      Future.microtask(
+        () => ref.read(routineProvider.notifier).fetchRoutines(),
+      );
+    }
+
+    final seen = <int>{};
+    final fromRoutines = <RoutineExercise>[];
+    for (final routine in routineState.routines) {
+      for (final ex in routine.exercises) {
+        if (pinnedIds.contains(ex.exerciseId) || seen.contains(ex.exerciseId)) {
+          continue;
+        }
+        seen.add(ex.exerciseId);
+        fromRoutines.add(ex);
+      }
+    }
+
+    if (fromRoutines.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'De tus rutinas',
+          style: TextStyle(
+            color: AppTheme.hintColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: fromRoutines.map((ex) {
+            return ActionChip(
+              label: Text(
+                ex.exerciseName,
+                style: const TextStyle(fontSize: 12),
+              ),
+              backgroundColor: AppTheme.cardColor,
+              side: BorderSide(
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+              onPressed: () async {
+                await ref.read(pinnedExerciseChartsProvider.notifier).pin(
+                      Exercise(
+                        id: ex.exerciseId,
+                        name: ex.exerciseName,
+                        muscleGroup: ex.muscleGroup,
+                        externalId: ex.externalId,
+                        gifUrl: ex.gifUrl,
+                        exerciseType: 'barra',
+                        isGlobal: false,
+                      ),
+                    );
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
   }
 }
 
@@ -543,6 +623,72 @@ class _MuscleGroupChip extends StatelessWidget {
   }
 }
 
+class _ExerciseRecordsRow extends StatelessWidget {
+  final ExerciseProgress exercise;
+
+  const _ExerciseRecordsRow({required this.exercise});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _RecordChip(
+            label: 'PR peso',
+            value: '${exercise.periodMaxWeight.toStringAsFixed(0)} kg',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _RecordChip(
+            label: 'PR volumen/sesión',
+            value: '${exercise.periodBestSessionVolume.toStringAsFixed(0)} kg',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecordChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _RecordChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: AppTheme.hintColor.withValues(alpha: 0.8),
+              fontSize: 9,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ExerciseProgressChart extends StatelessWidget {
   final ExerciseProgress exercise;
   final VoidCallback? onRemove;
@@ -594,6 +740,10 @@ class _ExerciseProgressChart extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _MuscleGroupChip(muscleGroup: exercise.muscleGroup),
+          if (exercise.dataPoints.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _ExerciseRecordsRow(exercise: exercise),
+          ],
           const SizedBox(height: 20),
           _ExerciseMetricLineChart(
             label: 'Volumen por sesión',
@@ -1204,6 +1354,46 @@ class _EmptyChartPlaceholder extends StatelessWidget {
   }
 }
 
+class _MuscleFrequencyRow extends StatelessWidget {
+  final List<MuscleVolumeItem> items;
+
+  const _MuscleFrequencyRow({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final top = items.take(6).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Volumen por grupo (esta semana)',
+          style: TextStyle(
+            color: AppTheme.hintColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: top.map((item) {
+            final vol = item.volume >= 1000
+                ? '${(item.volume / 1000).toStringAsFixed(1)}k kg'
+                : '${item.volume.round()} kg';
+            return Chip(
+              label: Text('${item.label}: $vol'),
+              backgroundColor: AppTheme.cardColor,
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+              labelStyle: const TextStyle(fontSize: 11),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
 class _MuscleMapTab extends ConsumerWidget {
   const _MuscleMapTab();
 
@@ -1242,6 +1432,9 @@ class _MuscleMapTab extends ConsumerWidget {
     final stats = weekStats;
     final frontLoads = stats?.muscleMap.front ?? {};
     final backLoads = stats?.muscleMap.back ?? {};
+    final absoluteKg = stats != null
+        ? absoluteVolumeByMapKey(stats.volumeByMuscleGroup)
+        : <String, double>{};
     final hasWeekVolume = stats?.hasData ?? false;
 
     return RefreshIndicator(
@@ -1280,7 +1473,12 @@ class _MuscleMapTab extends ConsumerWidget {
             InteractiveMuscleMap(
               frontLoads: frontLoads,
               backLoads: backLoads,
+              absoluteKgByMapKey: absoluteKg,
             ),
+            if (stats != null && stats.volumeByMuscleGroup.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _MuscleFrequencyRow(items: stats.volumeByMuscleGroup),
+            ],
             if (!hasWeekVolume) ...[
               const SizedBox(height: 16),
               const _StatisticsHintCard(
