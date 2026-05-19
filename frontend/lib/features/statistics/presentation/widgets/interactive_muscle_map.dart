@@ -11,11 +11,14 @@ const kMuscleMapSilhouetteOnly = false;
 class InteractiveMuscleMap extends StatefulWidget {
   final Map<String, double> frontLoads;
   final Map<String, double> backLoads;
+  /// Volumen en kg por clave del mapa (esta semana).
+  final Map<String, double> absoluteKgByMapKey;
 
   const InteractiveMuscleMap({
     super.key,
     required this.frontLoads,
     required this.backLoads,
+    this.absoluteKgByMapKey = const {},
   });
 
   @override
@@ -26,6 +29,7 @@ class _InteractiveMuscleMapState extends State<InteractiveMuscleMap> {
   String? _selectedZoneId;
   String? _selectedLabel;
   double _selectedLoad = 0;
+  double _selectedAbsoluteKg = 0;
 
   List<_HitZone> _hitZones(Size size) {
     if (kMuscleMapSilhouetteOnly) return const [];
@@ -69,11 +73,13 @@ class _InteractiveMuscleMapState extends State<InteractiveMuscleMap> {
             _selectedZoneId = null;
             _selectedLabel = null;
             _selectedLoad = 0;
+            _selectedAbsoluteKg = 0;
           } else {
             _selectedZoneId = hit.id;
             _selectedLabel =
                 hit.label.isNotEmpty ? hit.label : _labelForId(hit.id);
             _selectedLoad = load;
+            _selectedAbsoluteKg = _absoluteKgForZone(hit.zone);
           }
         });
         return;
@@ -83,6 +89,7 @@ class _InteractiveMuscleMapState extends State<InteractiveMuscleMap> {
       _selectedZoneId = null;
       _selectedLabel = null;
       _selectedLoad = 0;
+      _selectedAbsoluteKg = 0;
     });
   }
 
@@ -109,6 +116,18 @@ class _InteractiveMuscleMapState extends State<InteractiveMuscleMap> {
     return 'Carga alta';
   }
 
+  String _formatKg(double kg) {
+    if (kg >= 1000) return '${(kg / 1000).toStringAsFixed(1)}k kg';
+    return '${kg.round()} kg';
+  }
+
+  double _absoluteKgForZone(MusclePathDef zone) {
+    final base = zone.id.replaceAll('_r', '');
+    return widget.absoluteKgByMapKey[zone.id] ??
+        widget.absoluteKgByMapKey[base] ??
+        0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -124,6 +143,7 @@ class _InteractiveMuscleMapState extends State<InteractiveMuscleMap> {
             borderRadius: BorderRadius.circular(20),
             child: LayoutBuilder(
               builder: (context, constraints) {
+                final mapHeight = constraints.maxWidth * 1.15;
                 if (kMuscleMapSilhouetteOnly) {
                   return AnatomySilhouetteView(
                     width: constraints.maxWidth,
@@ -131,10 +151,17 @@ class _InteractiveMuscleMapState extends State<InteractiveMuscleMap> {
                     backLoads: const {},
                   );
                 }
-                return AnatomySilhouetteView(
-                  width: constraints.maxWidth,
-                  frontLoads: widget.frontLoads,
-                  backLoads: widget.backLoads,
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapUp: (d) => _handleTap(
+                    d.localPosition,
+                    Size(constraints.maxWidth, mapHeight),
+                  ),
+                  child: AnatomySilhouetteView(
+                    width: constraints.maxWidth,
+                    frontLoads: widget.frontLoads,
+                    backLoads: widget.backLoads,
+                  ),
                 );
               },
             ),
@@ -171,12 +198,28 @@ class _InteractiveMuscleMapState extends State<InteractiveMuscleMap> {
                     ),
                   ),
                 ),
-                Text(
-                  _loadLabel(_selectedLoad),
-                  style: const TextStyle(
-                    color: AppTheme.hintColor,
-                    fontSize: 12,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _loadLabel(_selectedLoad),
+                      style: const TextStyle(
+                        color: AppTheme.hintColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                    if (_selectedAbsoluteKg > 0) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatKg(_selectedAbsoluteKg),
+                        style: const TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -184,7 +227,7 @@ class _InteractiveMuscleMapState extends State<InteractiveMuscleMap> {
         ] else ...[
           const SizedBox(height: 8),
           const Text(
-            'Amarillo = fatiga acumulada en los últimos 7 días',
+            'Toca un músculo para ver el volumen de esta semana',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppTheme.hintColor, fontSize: 12),
           ),

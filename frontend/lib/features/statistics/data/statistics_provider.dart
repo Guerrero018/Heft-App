@@ -8,6 +8,7 @@ import '../../exercises/domain/exercise_model.dart';
 import '../../workouts/data/workout_provider.dart';
 import '../../workouts/domain/workout_model.dart';
 import '../domain/statistics_model.dart';
+import 'statistics_api_service.dart';
 import 'statistics_local_service.dart';
 
 class StatisticsState {
@@ -67,8 +68,8 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
   Future<void> _loadInitial() async {
     await _ensureBaseData(forceReload: true);
     state = state.copyWith(
-      data: _buildStats('month'),
-      muscleMapWeekData: _buildMuscleMapStats(),
+      data: await _buildStats('month'),
+      muscleMapWeekData: await _buildMuscleMapStats(),
       isLoading: false,
       muscleMapLoading: false,
       clearError: true,
@@ -95,7 +96,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
     try {
       await _ensureBaseData(forceReload: forceReload);
       state = state.copyWith(
-        data: _buildStats(apiPeriod),
+        data: await _buildStats(apiPeriod),
         isLoading: false,
         clearError: true,
       );
@@ -103,7 +104,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
       debugPrint('Statistics charts error: $e\n$stack');
       if (_cachedWorkouts != null) {
         state = state.copyWith(
-          data: _buildStats(apiPeriod),
+          data: await _buildStats(apiPeriod),
           isLoading: false,
           clearError: true,
         );
@@ -122,7 +123,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
     try {
       await _ensureBaseData(forceReload: forceReload);
       state = state.copyWith(
-        muscleMapWeekData: _buildMuscleMapStats(),
+        muscleMapWeekData: await _buildMuscleMapStats(),
         muscleMapLoading: false,
         clearMuscleMapError: true,
       );
@@ -130,7 +131,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
       debugPrint('Muscle map error: $e\n$stack');
       if (_cachedWorkouts != null) {
         state = state.copyWith(
-          muscleMapWeekData: _buildMuscleMapStats(),
+          muscleMapWeekData: await _buildMuscleMapStats(),
           muscleMapLoading: false,
           clearMuscleMapError: true,
         );
@@ -193,7 +194,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
 
   List<WorkoutSession> get cachedWorkoutsForStreak => _cachedWorkouts ?? [];
 
-  UserStatistics _buildStats(String apiPeriod) {
+  UserStatistics _buildStatsLocal(String apiPeriod) {
     final user = ref.read(authProvider).user;
     final daysPerWeek = (user?['workout_days_per_week'] as num?)?.toInt() ?? 3;
     return buildStatisticsFromWorkouts(
@@ -204,15 +205,41 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
     );
   }
 
-  UserStatistics _buildMuscleMapStats() {
-    final user = ref.read(authProvider).user;
-    final daysPerWeek = (user?['workout_days_per_week'] as num?)?.toInt() ?? 3;
-    return buildStatisticsFromWorkouts(
-      workouts: _cachedWorkouts ?? [],
-      exerciseMuscleById: _cachedMuscleMap ?? {},
-      apiPeriod: muscleMapApiPeriod,
-      workoutDaysPerWeek: daysPerWeek,
-    );
+  Future<UserStatistics> _buildStats(String apiPeriod) async {
+    final local = _buildStatsLocal(apiPeriod);
+    final fromApi = await fetchUserStatisticsFromApi(apiPeriod);
+    if (fromApi == null) return local;
+    return _mergeWithLocal(fromApi, local);
+  }
+
+  Future<UserStatistics> _buildMuscleMapStats() async {
+    final local = _buildStatsLocal(muscleMapApiPeriod);
+    final fromApi = await fetchUserStatisticsFromApi(muscleMapApiPeriod);
+    if (fromApi == null) return local;
+    return _mergeWithLocal(fromApi, local);
+  }
+
+  /// API para agregados; local para progreso completo por ejercicio.
+  UserStatistics _mergeWithLocal(
+    UserStatistics api,
+    UserStatistics local,
+  ) {
+    final progressById = {
+      for (final e in local.exerciseProgress) e.exerciseId: e,
+    };
+    final mergedProgress = <ExerciseProgress>[];
+    final seen = <int>{};
+    for (final e in api.exerciseProgress) {
+      mergedProgress.add(progressById[e.exerciseId] ?? e);
+      seen.add(e.exerciseId);
+    }
+    for (final e in local.exerciseProgress) {
+      if (!seen.contains(e.exerciseId)) {
+        mergedProgress.add(e);
+      }
+    }
+
+    return api.copyWith(exerciseProgress: mergedProgress);
   }
 
   Future<List<WorkoutSession>> _loadWorkoutsWithSets({

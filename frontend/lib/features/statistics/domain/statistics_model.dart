@@ -109,6 +109,16 @@ class ExerciseProgress {
     required this.dataPoints,
   });
 
+  double get periodMaxWeight {
+    if (dataPoints.isEmpty) return 0;
+    return dataPoints.map((p) => p.maxWeight).reduce((a, b) => a > b ? a : b);
+  }
+
+  double get periodBestSessionVolume {
+    if (dataPoints.isEmpty) return 0;
+    return dataPoints.map((p) => p.volume).reduce((a, b) => a > b ? a : b);
+  }
+
   factory ExerciseProgress.fromJson(Map<String, dynamic> json) {
     return ExerciseProgress(
       exerciseId: json['exercise_id'] ?? 0,
@@ -190,6 +200,26 @@ class UserStatistics {
       exerciseProgress: (json['exercise_progress'] as List? ?? [])
           .map((e) => ExerciseProgress.fromJson(e))
           .toList(),
+    );
+  }
+
+  UserStatistics copyWith({
+    List<ExerciseProgress>? exerciseProgress,
+    MuscleMapData? muscleMap,
+    List<MuscleVolumeItem>? volumeByMuscleGroup,
+    List<DailyVolumePoint>? dailyVolume,
+    StatisticsSummary? summary,
+  }) {
+    return UserStatistics(
+      period: period,
+      periodLabel: periodLabel,
+      periodStart: periodStart,
+      periodEnd: periodEnd,
+      summary: summary ?? this.summary,
+      dailyVolume: dailyVolume ?? this.dailyVolume,
+      volumeByMuscleGroup: volumeByMuscleGroup ?? this.volumeByMuscleGroup,
+      muscleMap: muscleMap ?? this.muscleMap,
+      exerciseProgress: exerciseProgress ?? this.exerciseProgress,
     );
   }
 
