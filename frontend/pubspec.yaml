@@ -70,9 +70,9 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: "#121212"
-  image: "assets/images/HeftLogo.png"
+  image: "assets/images/HeftLogo2.png"
   android_12:
-    image: "assets/images/HeftLogo.png"
+    image: "assets/images/HeftLogo2.png"
     color: "#121212"
 
 # For information on the generic Dart part of this file, see the
