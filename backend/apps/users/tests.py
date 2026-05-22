@@ -6,7 +6,11 @@ from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from .models import PasswordResetCode, User
+from datetime import date
+
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from .models import BodyMeasures, PasswordResetCode, User
 
 
 @override_settings(
@@ -135,3 +139,65 @@ class PasswordResetFlowTests(APITestCase):
         codes = list(PasswordResetCode.objects.filter(user=self.user).order_by("-created_at"))
         self.assertEqual(len(codes), 2)
         self.assertIsNotNone(codes[1].used_at)
+
+
+class BodyMeasuresAPITests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="bodytrack",
+            email="body@test.local",
+            password="TestPass123!",
+            weight=80.0,
+        )
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        self.base_url = "/api/body-measures/"
+
+    def test_create_entry_syncs_user_weight(self):
+        response = self.client.post(
+            self.base_url,
+            {"weight": 78.5, "date": "2026-05-20"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.weight, 78.5)
+
+    def test_weight_history_ordered_by_date(self):
+        BodyMeasures.objects.create(user=self.user, weight=80, date=date(2026, 5, 1))
+        BodyMeasures.objects.create(user=self.user, weight=79, date=date(2026, 5, 10))
+
+        response = self.client.get(f"{self.base_url}weight-history/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 2)
+        self.assertEqual(response.data[0]["weight"], 80)
+        self.assertEqual(response.data[1]["weight"], 79)
+
+    def test_cannot_access_other_users_entries(self):
+        other = User.objects.create_user(
+            username="other",
+            email="other@test.local",
+            password="TestPass123!",
+        )
+        entry = BodyMeasures.objects.create(
+            user=other, weight=90, date=date(2026, 5, 1)
+        )
+
+        response = self.client.get(f"{self.base_url}{entry.id}/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_reverts_user_weight_to_previous_entry(self):
+        BodyMeasures.objects.create(user=self.user, weight=80, date=date(2026, 5, 1))
+        latest = BodyMeasures.objects.create(
+            user=self.user, weight=75, date=date(2026, 5, 15)
+        )
+        self.user.weight = 75
+        self.user.save(update_fields=["weight"])
+
+        response = self.client.delete(f"{self.base_url}{latest.id}/")
+
+        self.assertEqual(response.status_code, 204)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.weight, 80)

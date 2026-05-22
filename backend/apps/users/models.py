@@ -30,10 +30,29 @@ class User(AbstractUser):
 
 class BodyMeasures(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="body_measures")
-    weight = models.FloatField()
+    weight = models.FloatField(help_text="Weight in kg")
     date = models.DateField()
     notes = models.TextField(blank=True)
     photo = models.ImageField(upload_to="body_measures", blank=True, null=True)
+    # Optional body measurements (cm)
+    neck_cm = models.FloatField(null=True, blank=True)
+    chest_cm = models.FloatField(null=True, blank=True)
+    waist_cm = models.FloatField(null=True, blank=True)
+    hips_cm = models.FloatField(null=True, blank=True)
+    shoulders_cm = models.FloatField(null=True, blank=True)
+    bicep_left_cm = models.FloatField(null=True, blank=True)
+    bicep_right_cm = models.FloatField(null=True, blank=True)
+    thigh_left_cm = models.FloatField(null=True, blank=True)
+    thigh_right_cm = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-date", "-id"]
+        indexes = [
+            models.Index(fields=["user", "-date"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} — {self.date} ({self.weight} kg)"
 
 
 class PasswordResetCode(models.Model):
