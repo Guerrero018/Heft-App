@@ -8,6 +8,7 @@ import '../../body_progress/data/body_progress_provider.dart';
 import '../../body_progress/domain/body_measure_model.dart';
 import '../../body_progress/presentation/add_body_entry_screen.dart';
 import '../../body_progress/presentation/body_progress_screen.dart';
+import '../../body_progress/presentation/widgets/entry_measure_chips.dart';
 
 /// Bloque compacto de progreso corporal para el perfil.
 class ProfileBodyProgressSection extends ConsumerWidget {
@@ -148,8 +149,6 @@ class _FilledProgressSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final latest = entries.first;
     final photos = entries.where((e) => e.hasPhoto).take(4).toList();
-    final withMeasures = entries.where((e) => e.hasBodyMeasurements).toList();
-    final lastMeasure = withMeasures.isNotEmpty ? withMeasures.first : null;
 
     double? weightDelta;
     if (entries.length >= 2) {
@@ -164,133 +163,68 @@ class _FilledProgressSummary extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${latest.weight.toStringAsFixed(1)} kg',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat('d MMM yyyy', 'es').format(latest.date),
-                          style: const TextStyle(color: AppTheme.hintColor, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (weightDelta != null)
-                    _DeltaBadge(delta: weightDelta),
-                  const Icon(Icons.chevron_right, color: AppTheme.hintColor),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (photos.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _ProgressCard(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Fotos', style: TextStyle(color: AppTheme.hintColor, fontSize: 12)),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 72,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: photos.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (_, i) => ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: SizedBox(
-                          width: 56,
-                          height: 72,
-                          child: CachedNetworkImage(
-                            imageUrl: photos[i].photoUrl!,
-                            fit: BoxFit.cover,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${latest.weight.toStringAsFixed(1)} kg',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              DateFormat('d MMM yyyy', 'es').format(latest.date),
+                              style: const TextStyle(color: AppTheme.hintColor, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (weightDelta != null) _DeltaBadge(delta: weightDelta),
+                      const Icon(Icons.chevron_right, color: AppTheme.hintColor),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Divider(color: Colors.white12, height: 1),
+                  const SizedBox(height: 12),
+                  EntryMeasureChips(entry: latest, compact: true),
+                  if (photos.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      height: 64,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: photos.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (_, i) => ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: SizedBox(
+                            width: 48,
+                            height: 64,
+                            child: CachedNetworkImage(
+                              imageUrl: photos[i].photoUrl!,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
-          ),
-        ],
-        if (lastMeasure != null) ...[
-          const SizedBox(height: 10),
-          _ProgressCard(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Últimas medidas', style: TextStyle(color: AppTheme.hintColor, fontSize: 12)),
-                  const SizedBox(height: 8),
-                  _MeasurePreviewChips(entry: lastMeasure),
-                ],
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: onOpenDetail,
-            child: const Text('Ver todo el progreso'),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _MeasurePreviewChips extends StatelessWidget {
-  final BodyMeasureEntry entry;
-
-  const _MeasurePreviewChips({required this.entry});
-
-  @override
-  Widget build(BuildContext context) {
-    final chips = <String>[];
-    void add(String label, double? v) {
-      if (v != null) chips.add('$label ${v.toStringAsFixed(0)}');
-    }
-
-    add('Cintura', entry.waistCm);
-    add('Pecho', entry.chestCm);
-    add('Hombros', entry.shouldersCm);
-    add('B.izq', entry.bicepLeftCm);
-    add('B.der', entry.bicepRightCm);
-
-    final visible = chips.take(4).toList();
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: visible
-          .map(
-            (t) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 12)),
-            ),
-          )
-          .toList(),
     );
   }
 }

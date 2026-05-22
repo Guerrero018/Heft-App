@@ -1,3 +1,17 @@
+/// Lista: más antiguo primero (izquierda en gráficos).
+int compareBodyMeasureEntriesAsc(BodyMeasureEntry a, BodyMeasureEntry b) {
+  final byDate = a.date.compareTo(b.date);
+  if (byDate != 0) return byDate;
+  return a.id.compareTo(b.id);
+}
+
+/// Lista: más reciente primero.
+int compareBodyMeasureEntriesDesc(BodyMeasureEntry a, BodyMeasureEntry b) {
+  final byDate = b.date.compareTo(a.date);
+  if (byDate != 0) return byDate;
+  return b.id.compareTo(a.id);
+}
+
 class BodyMeasureEntry {
   final int id;
   final double weight;

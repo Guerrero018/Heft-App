@@ -40,36 +40,50 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       backgroundColor: AppTheme.surfaceColor,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              pinned: true,
-              actions: const [
-                ProfileSettingsMenu(),
-                SizedBox(width: 8),
-              ],
-            ),
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  const SizedBox(height: 8),
-                  _ProfileHeader(user: user),
-                  const SizedBox(height: 24),
-                  _StatsRow(user: user),
-                  const SizedBox(height: 28),
-                  _AchievementsSection(),
-                  const SizedBox(height: 28),
-                  const ProfileBodyProgressSection(),
-                  const SizedBox(height: 40),
-                ],
+        child: ScrollConfiguration(
+          behavior: _ProfileScrollBehavior(),
+          child: CustomScrollView(
+            physics: const ClampingScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    const Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: EdgeInsets.only(right: 8, top: 4),
+                        child: ProfileSettingsMenu(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _ProfileHeader(user: user),
+                    const SizedBox(height: 24),
+                    _StatsRow(user: user),
+                    const SizedBox(height: 28),
+                    _AchievementsSection(),
+                    const SizedBox(height: 28),
+                    const ProfileBodyProgressSection(),
+                    const SizedBox(height: 40),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+/// Evita la franja amarilla del glow/overscroll del Material al tirar del scroll.
+class _ProfileScrollBehavior extends ScrollBehavior {
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
   }
 }
 

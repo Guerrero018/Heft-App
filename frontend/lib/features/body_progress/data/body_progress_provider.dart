@@ -74,15 +74,17 @@ class BodyProgressNotifier extends Notifier<BodyProgressState> {
     } else if (data is Map && data['results'] is List) {
       list = data['results'] as List;
     }
-    return list
+    final entries = list
         .map((json) => BodyMeasureEntry.fromJson(json as Map<String, dynamic>))
         .toList();
+    entries.sort(compareBodyMeasureEntriesDesc);
+    return entries;
   }
 
   List<WeightHistoryPoint> _weightHistoryFromEntries(
     List<BodyMeasureEntry> entries,
   ) {
-    final sorted = [...entries]..sort((a, b) => a.date.compareTo(b.date));
+    final sorted = [...entries]..sort(compareBodyMeasureEntriesAsc);
     return sorted
         .map((e) => WeightHistoryPoint(date: e.date, weight: e.weight))
         .toList();
