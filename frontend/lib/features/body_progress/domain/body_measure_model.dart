@@ -1,3 +1,6 @@
+/// Máximo de fotos por registro de peso/medidas (debe coincidir con el backend).
+const int kMaxBodyEntryPhotos = 4;
+
 /// Lista: más antiguo primero (izquierda en gráficos).
 int compareBodyMeasureEntriesAsc(BodyMeasureEntry a, BodyMeasureEntry b) {
   final byDate = a.date.compareTo(b.date);
@@ -17,7 +20,7 @@ class BodyMeasureEntry {
   final double weight;
   final DateTime date;
   final String notes;
-  final String? photoUrl;
+  final List<String> photoUrls;
   final double? neckCm;
   final double? chestCm;
   final double? waistCm;
@@ -33,7 +36,7 @@ class BodyMeasureEntry {
     required this.weight,
     required this.date,
     this.notes = '',
-    this.photoUrl,
+    this.photoUrls = const [],
     this.neckCm,
     this.chestCm,
     this.waistCm,
@@ -45,7 +48,10 @@ class BodyMeasureEntry {
     this.thighRightCm,
   });
 
-  bool get hasPhoto => photoUrl != null && photoUrl!.isNotEmpty;
+  bool get hasPhoto => photoUrls.isNotEmpty;
+
+  /// Primera foto (compatibilidad con API `photo`).
+  String? get photoUrl => photoUrls.isNotEmpty ? photoUrls.first : null;
 
   bool get hasBodyMeasurements =>
       neckCm != null ||
@@ -59,12 +65,13 @@ class BodyMeasureEntry {
       thighRightCm != null;
 
   factory BodyMeasureEntry.fromJson(Map<String, dynamic> json) {
+    final photos = _parsePhotoUrls(json);
     return BodyMeasureEntry(
       id: json['id'] as int,
       weight: (json['weight'] as num).toDouble(),
       date: DateTime.parse(json['date'] as String),
       notes: (json['notes'] as String?) ?? '',
-      photoUrl: json['photo'] as String?,
+      photoUrls: photos,
       neckCm: _optionalDouble(json['neck_cm']),
       chestCm: _optionalDouble(json['chest_cm']),
       waistCm: _optionalDouble(json['waist_cm']),
@@ -77,10 +84,53 @@ class BodyMeasureEntry {
     );
   }
 
+  static List<String> _parsePhotoUrls(Map<String, dynamic> json) {
+    final raw = json['photos'];
+    if (raw is List) {
+      return raw
+          .whereType<String>()
+          .where((u) => u.isNotEmpty)
+          .toList(growable: false);
+    }
+    final single = json['photo'] as String?;
+    if (single != null && single.isNotEmpty) {
+      return [single];
+    }
+    return const [];
+  }
+
   static double? _optionalDouble(dynamic value) {
     if (value == null) return null;
     return (value as num).toDouble();
   }
+}
+
+/// Una foto concreta dentro de un registro (para el álbum).
+class AlbumPhotoItem {
+  final BodyMeasureEntry entry;
+  final int photoIndex;
+  final String url;
+
+  const AlbumPhotoItem({
+    required this.entry,
+    required this.photoIndex,
+    required this.url,
+  });
+
+  int get entryId => entry.id;
+}
+
+List<AlbumPhotoItem> flattenAlbumPhotos(List<BodyMeasureEntry> entries) {
+  final items = <AlbumPhotoItem>[];
+  final sorted = [...entries]..sort(compareBodyMeasureEntriesDesc);
+  for (final entry in sorted) {
+    for (var i = 0; i < entry.photoUrls.length; i++) {
+      items.add(
+        AlbumPhotoItem(entry: entry, photoIndex: i, url: entry.photoUrls[i]),
+      );
+    }
+  }
+  return items;
 }
 
 class WeightHistoryPoint {

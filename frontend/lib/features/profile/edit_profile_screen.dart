@@ -115,24 +115,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         'workout_days_per_week': _daysPerWeek,
       };
 
-      await ref.read(authProvider.notifier).updateProfile(
+      final authNotifier = ref.read(authProvider.notifier);
+      await authNotifier.updateProfile(
         data: data,
         imagePath: _imageFile?.path,
       );
-      
-      if (mounted) {
-        final error = ref.read(authProvider).error;
-        if (error == null) {
-          ref.invalidate(weekStreakProvider);
-          ref.invalidate(statisticsProvider);
-          final messenger = ScaffoldMessenger.of(context);
-          Navigator.of(context).pop();
-          messenger.showSnackBar(
-            AppMessage.snackBar('Perfil actualizado correctamente'),
-          );
-        } else {
-          AppMessage.showError(context, error);
-        }
+
+      if (!mounted) return;
+      final error = ref.read(authProvider).error;
+      if (error == null) {
+        ref.invalidate(weekStreakProvider);
+        ref.invalidate(statisticsProvider);
+        final messenger = ScaffoldMessenger.of(context);
+        Navigator.of(context).pop();
+        messenger.showSnackBar(
+          AppMessage.snackBar('Perfil actualizado correctamente'),
+        );
+      } else {
+        AppMessage.showError(context, error);
       }
     }
   }

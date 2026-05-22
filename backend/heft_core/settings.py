@@ -42,9 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "cloudinary_storage",
     "django.contrib.staticfiles",
-    "cloudinary",
     # Librerías de Terceros (Nuestros motores)
     "rest_framework",
     "rest_framework_simplejwt",
@@ -202,15 +200,27 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-# Media files (User uploaded files)
-MEDIA_URL = '/media/'
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+# Media files (user uploads: Supabase Storage o carpeta local en desarrollo)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
-    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
-}
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_PROFILE_BUCKET = os.getenv("SUPABASE_PROFILE_BUCKET", "profile-pics")
+SUPABASE_BODY_BUCKET = os.getenv("SUPABASE_BODY_BUCKET", "body-measures")
+SUPABASE_PROFILE_BUCKET_PUBLIC = (
+    os.getenv("SUPABASE_PROFILE_BUCKET_PUBLIC", "True") == "True"
+)
+SUPABASE_SIGNED_URL_TTL = int(os.getenv("SUPABASE_SIGNED_URL_TTL", "3600"))
+DEFAULT_PROFILE_PICTURE_URL = os.getenv(
+    "DEFAULT_PROFILE_PICTURE_URL",
+    "https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png",
+)
+
+USE_SUPABASE_STORAGE = bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
+
+if not USE_SUPABASE_STORAGE:
+    DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 
 if os.getenv("EMAIL_HOST"):
     EMAIL_BACKEND = os.getenv(

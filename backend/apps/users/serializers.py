@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.password_validation import validate_password
@@ -5,22 +6,15 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import BodyMeasures, PasswordResetCode
+from .body_measure_photos import (
+    MAX_BODY_MEASURE_PHOTOS,
+    incoming_photo_files,
+    photo_urls_for_measure,
+)
+from .media_utils import resolve_media_url
+from .models import BodyMeasurePhoto, BodyMeasures, PasswordResetCode
 
 User = get_user_model()
-
-
-def resolve_media_url(file_field, request=None):
-    if not file_field:
-        return None
-    url = file_field.url
-    if url.startswith("/media/"):
-        if request:
-            return request.build_absolute_uri(url)
-        return f"http://10.0.2.2:8000{url}"
-    if url.startswith("http://"):
-        return url.replace("http://", "https://", 1)
-    return url
 
 class CustomUserSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(required=False, allow_null=True)
@@ -43,16 +37,17 @@ class CustomUserSerializer(serializers.ModelSerializer):
         ret = super().to_representation(instance)
         
         # Lógica para obtener la URL correcta
-        if instance.profile_picture:
-            ret['profile_picture'] = resolve_media_url(
-                instance.profile_picture,
-                self.context.get("request"),
-            )
-        else:
-            # Foto por defecto oficial de Heft
-            ret['profile_picture'] = "https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png"
-            
+        picture_url = resolve_media_url(
+            instance.profile_picture,
+            self.context.get("request"),
+        )
+        ret["profile_picture"] = picture_url or settings.DEFAULT_PROFILE_PICTURE_URL
         return ret
+
+    def update(self, instance, validated_data):
+        if validated_data.get("profile_picture") and instance.profile_picture:
+            instance.profile_picture.delete(save=False)
+        return super().update(instance, validated_data)
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -195,7 +190,11 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 class BodyMeasuresSerializer(serializers.ModelSerializer):
-    photo = serializers.ImageField(required=False, allow_null=True)
+    photos = serializers.ListField(
+        child=serializers.URLField(),
+        read_only=True,
+    )
+    photo = serializers.URLField(read_only=True, allow_null=True)
 
     class Meta:
         model = BodyMeasures
@@ -204,6 +203,7 @@ class BodyMeasuresSerializer(serializers.ModelSerializer):
             "weight",
             "date",
             "notes",
+            "photos",
             "photo",
             "neck_cm",
             "chest_cm",
@@ -215,12 +215,24 @@ class BodyMeasuresSerializer(serializers.ModelSerializer):
             "thigh_left_cm",
             "thigh_right_cm",
         )
-        read_only_fields = ("id",)
+        read_only_fields = ("id", "photos", "photo")
 
     def validate_weight(self, value):
         if value <= 0 or value > 500:
             raise serializers.ValidationError("El peso debe estar entre 0 y 500 kg.")
         return value
+
+    def _validate_photo_upload_count(self, new_files, existing_count=0):
+        total = existing_count + len(new_files)
+        if total > MAX_BODY_MEASURE_PHOTOS:
+            raise serializers.ValidationError(
+                {
+                    "photos": (
+                        f"Puedes adjuntar como máximo {MAX_BODY_MEASURE_PHOTOS} fotos "
+                        f"por registro (tienes {existing_count}, intentas añadir {len(new_files)})."
+                    )
+                }
+            )
 
     def validate(self, attrs):
         measurement_fields = (
@@ -240,9 +252,45 @@ class BodyMeasuresSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {field: "La medida debe estar entre 0 y 300 cm."}
                 )
+
+        request = self.context.get("request")
+        new_files = incoming_photo_files(request)
+        if self.instance is None:
+            self._validate_photo_upload_count(new_files, 0)
+        elif new_files:
+            self._validate_photo_upload_count(
+                new_files, self.instance.measure_photos.count()
+            )
         return attrs
+
+    def _attach_photos(self, measure, files):
+        start_order = measure.measure_photos.count()
+        for offset, uploaded in enumerate(files):
+            BodyMeasurePhoto.objects.create(
+                body_measure=measure,
+                image=uploaded,
+                order=start_order + offset,
+            )
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        files = incoming_photo_files(request)
+        measure = BodyMeasures.objects.create(**validated_data)
+        if files:
+            self._attach_photos(measure, files)
+        return measure
+
+    def update(self, instance, validated_data):
+        request = self.context.get("request")
+        files = incoming_photo_files(request)
+        measure = super().update(instance, validated_data)
+        if files:
+            self._attach_photos(measure, files)
+        return measure
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        ret["photo"] = resolve_media_url(instance.photo, self.context.get("request"))
+        urls = photo_urls_for_measure(instance, self.context.get("request"))
+        ret["photos"] = urls
+        ret["photo"] = urls[0] if urls else None
         return ret

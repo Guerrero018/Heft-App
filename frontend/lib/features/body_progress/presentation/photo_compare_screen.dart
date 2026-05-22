@@ -101,7 +101,7 @@ class _PhotoCompareScreenState extends State<PhotoCompareScreen> {
             fit: StackFit.expand,
             children: [
               Positioned.fill(
-                child: _PhotoImage(url: _newer.photoUrl!, fit: BoxFit.cover),
+                child: _PhotoImage(url: _newer.photoUrl ?? '', fit: BoxFit.cover),
               ),
               Positioned(
                 left: 0,
@@ -115,7 +115,7 @@ class _PhotoCompareScreenState extends State<PhotoCompareScreen> {
                     child: SizedBox(
                       width: w,
                       height: h,
-                      child: _PhotoImage(url: _older.photoUrl!, fit: BoxFit.cover),
+                      child: _PhotoImage(url: _older.photoUrl ?? '', fit: BoxFit.cover),
                     ),
                   ),
                 ),
@@ -183,7 +183,7 @@ class _PhotoPanel extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          _PhotoImage(url: entry.photoUrl!, fit: BoxFit.cover),
+          _PhotoImage(url: entry.photoUrl ?? '', fit: BoxFit.cover),
           Positioned(
             left: 0,
             right: 0,
