@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_message.dart';
 import '../../auth/auth_provider.dart';
 import '../data/body_progress_provider.dart';
+import '../domain/body_measure_model.dart';
 
 class AddBodyEntryScreen extends ConsumerStatefulWidget {
   const AddBodyEntryScreen({super.key});
@@ -33,7 +34,7 @@ class _AddBodyEntryScreenState extends ConsumerState<AddBodyEntryScreen> {
   final _picker = ImagePicker();
 
   DateTime _selectedDate = DateTime.now();
-  File? _imageFile;
+  final List<File> _imageFiles = [];
   bool _showMeasurements = false;
 
   @override
@@ -92,6 +93,14 @@ class _AddBodyEntryScreenState extends ConsumerState<AddBodyEntryScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
+    if (_imageFiles.length >= kMaxBodyEntryPhotos) {
+      if (!mounted) return;
+      AppMessage.showError(
+        context,
+        'Máximo $kMaxBodyEntryPhotos fotos por registro.',
+      );
+      return;
+    }
     final file = await _picker.pickImage(
       source: source,
       maxWidth: 1200,
@@ -99,8 +108,12 @@ class _AddBodyEntryScreenState extends ConsumerState<AddBodyEntryScreen> {
       imageQuality: 80,
     );
     if (file != null) {
-      setState(() => _imageFile = File(file.path));
+      setState(() => _imageFiles.add(File(file.path)));
     }
+  }
+
+  void _removeImage(int index) {
+    setState(() => _imageFiles.removeAt(index));
   }
 
   void _showImageOptions() {
@@ -143,7 +156,7 @@ class _AddBodyEntryScreenState extends ConsumerState<AddBodyEntryScreen> {
           weight: weight,
           date: _selectedDate,
           notes: _notesController.text.trim(),
-          imagePath: _imageFile?.path,
+          imagePaths: _imageFiles.map((f) => f.path).toList(),
           neckCm: _parseOptional(_neckController.text),
           chestCm: _parseOptional(_chestController.text),
           waistCm: _parseOptional(_waistController.text),
@@ -227,21 +240,68 @@ class _AddBodyEntryScreenState extends ConsumerState<AddBodyEntryScreen> {
               decoration: _inputDecoration('Notas (opcional)', Icons.notes_outlined),
             ),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _showImageOptions,
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: Text(_imageFile == null ? 'Añadir foto de progreso' : 'Cambiar foto'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.primaryColor,
-                side: const BorderSide(color: AppTheme.primaryColor),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _imageFiles.length >= kMaxBodyEntryPhotos
+                        ? null
+                        : _showImageOptions,
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                    label: Text(
+                      _imageFiles.isEmpty
+                          ? 'Añadir fotos (máx. $kMaxBodyEntryPhotos)'
+                          : 'Añadir otra foto (${_imageFiles.length}/$kMaxBodyEntryPhotos)',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      side: const BorderSide(color: AppTheme.primaryColor),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            if (_imageFile != null) ...[
+            if (_imageFiles.isNotEmpty) ...[
               const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.file(_imageFile!, height: 200, width: double.infinity, fit: BoxFit.cover),
+              SizedBox(
+                height: 108,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _imageFiles.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) {
+                    final file = _imageFiles[index];
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            file,
+                            width: 96,
+                            height: 108,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          top: -6,
+                          right: -6,
+                          child: IconButton.filled(
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.black87,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(28, 28),
+                              padding: EdgeInsets.zero,
+                            ),
+                            onPressed: () => _removeImage(index),
+                            icon: const Icon(Icons.close, size: 16),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ],
             const SizedBox(height: 16),

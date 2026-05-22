@@ -17,40 +17,33 @@ class PhotoAlbumTab extends StatefulWidget {
 }
 
 class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
-  final Set<int> _selectedIds = {};
+  final Set<int> _selectedEntryIds = {};
   bool _compareMode = false;
 
-  List<BodyMeasureEntry> get _photos {
-    final list = widget.entries.where((e) => e.hasPhoto).toList();
-    list.sort((a, b) => b.date.compareTo(a.date));
-    return list;
-  }
+  List<AlbumPhotoItem> get _albumItems => flattenAlbumPhotos(widget.entries);
 
-  void _toggleSelect(BodyMeasureEntry entry) {
+  void _toggleSelect(AlbumPhotoItem item) {
     setState(() {
-      if (_selectedIds.contains(entry.id)) {
-        _selectedIds.remove(entry.id);
-      } else if (_selectedIds.length < 2) {
-        _selectedIds.add(entry.id);
+      if (_selectedEntryIds.contains(item.entryId)) {
+        _selectedEntryIds.remove(item.entryId);
+      } else if (_selectedEntryIds.length < 2) {
+        _selectedEntryIds.add(item.entryId);
       } else {
-        _selectedIds.clear();
-        _selectedIds.add(entry.id);
+        _selectedEntryIds.clear();
+        _selectedEntryIds.add(item.entryId);
       }
     });
   }
 
   void _openCompare() {
-    if (_selectedIds.length != 2) return;
-    final selected = _photos.where((e) => _selectedIds.contains(e.id)).toList();
-    if (selected.length != 2) return;
-
+    if (_selectedEntryIds.length != 2) return;
+    final ids = _selectedEntryIds.toList();
+    final first = widget.entries.firstWhere((e) => e.id == ids[0]);
+    final second = widget.entries.firstWhere((e) => e.id == ids[1]);
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PhotoCompareScreen(
-          before: selected[0],
-          after: selected[1],
-        ),
+        builder: (_) => PhotoCompareScreen(before: first, after: second),
       ),
     );
   }
@@ -60,7 +53,7 @@ class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
       context,
       MaterialPageRoute(
         builder: (_) => _PhotoGalleryScreen(
-          photos: _photos,
+          items: _albumItems,
           initialIndex: index,
           onCompare: (a, b) {
             Navigator.push(
@@ -77,7 +70,7 @@ class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_photos.isEmpty) {
+    if (_albumItems.isEmpty) {
       return const BodyProgressEmpty(
         icon: Icons.photo_album_outlined,
         message:
@@ -94,8 +87,8 @@ class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
               Expanded(
                 child: Text(
                   _compareMode
-                      ? 'Selecciona 2 fotos (${_selectedIds.length}/2)'
-                      : '${_photos.length} fotos en tu línea temporal',
+                      ? 'Selecciona 2 registros (${_selectedEntryIds.length}/2)'
+                      : '${_albumItems.length} fotos en tu línea temporal',
                   style: const TextStyle(color: AppTheme.hintColor, fontSize: 13),
                 ),
               ),
@@ -103,7 +96,7 @@ class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
                 onPressed: () {
                   setState(() {
                     _compareMode = !_compareMode;
-                    _selectedIds.clear();
+                    _selectedEntryIds.clear();
                   });
                 },
                 icon: Icon(_compareMode ? Icons.close : Icons.compare, size: 18),
@@ -113,7 +106,7 @@ class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
             ],
           ),
         ),
-        if (_compareMode && _selectedIds.length == 2)
+        if (_compareMode && _selectedEntryIds.length == 2)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
             child: SizedBox(
@@ -134,17 +127,19 @@ class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
               mainAxisSpacing: 10,
               childAspectRatio: 0.72,
             ),
-            itemCount: _photos.length,
+            itemCount: _albumItems.length,
             itemBuilder: (context, index) {
-              final entry = _photos[index];
-              final isSelected = _selectedIds.contains(entry.id);
-              final isFirst = index == _photos.length - 1;
+              final item = _albumItems[index];
+              final entry = item.entry;
+              final isSelected = _selectedEntryIds.contains(item.entryId);
               final isLatest = index == 0;
+              final isFirst = index == _albumItems.length - 1;
+              final moreInEntry = entry.photoUrls.length > 1;
 
               return GestureDetector(
                 onTap: () {
                   if (_compareMode) {
-                    _toggleSelect(entry);
+                    _toggleSelect(item);
                   } else {
                     _openGallery(index);
                   }
@@ -153,7 +148,7 @@ class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
                   if (!_compareMode) {
                     setState(() {
                       _compareMode = true;
-                      _selectedIds.add(entry.id);
+                      _selectedEntryIds.add(item.entryId);
                     });
                   }
                 },
@@ -174,10 +169,30 @@ class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
                       fit: StackFit.expand,
                       children: [
                         CachedNetworkImage(
-                          imageUrl: entry.photoUrl!,
+                          imageUrl: item.url,
                           fit: BoxFit.cover,
                           placeholder: (_, __) => Container(color: AppTheme.cardColor),
                         ),
+                        if (moreInEntry)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${item.photoIndex + 1}/${entry.photoUrls.length}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
                         if (isLatest || isFirst)
                           Positioned(
                             top: 8,
@@ -202,7 +217,7 @@ class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
                           ),
                         if (isSelected)
                           const Positioned(
-                            top: 8,
+                            bottom: 8,
                             right: 8,
                             child: Icon(
                               Icons.check_circle,
@@ -263,12 +278,12 @@ class _PhotoAlbumTabState extends State<PhotoAlbumTab> {
 }
 
 class _PhotoGalleryScreen extends StatefulWidget {
-  final List<BodyMeasureEntry> photos;
+  final List<AlbumPhotoItem> items;
   final int initialIndex;
   final void Function(BodyMeasureEntry a, BodyMeasureEntry b) onCompare;
 
   const _PhotoGalleryScreen({
-    required this.photos,
+    required this.items,
     required this.initialIndex,
     required this.onCompare,
   });
@@ -305,7 +320,8 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
           if (_compareWith != null)
             TextButton(
               onPressed: () {
-                final current = widget.photos[_controller.page?.round() ?? 0];
+                final i = _controller.page?.round() ?? 0;
+                final current = widget.items[i.clamp(0, widget.items.length - 1)].entry;
                 widget.onCompare(_compareWith!, current);
               },
               child: const Text('Comparar', style: TextStyle(color: AppTheme.primaryColor)),
@@ -317,13 +333,13 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
           Expanded(
             child: PageView.builder(
               controller: _controller,
-              itemCount: widget.photos.length,
+              itemCount: widget.items.length,
               itemBuilder: (_, i) {
-                final e = widget.photos[i];
+                final item = widget.items[i];
                 return InteractiveViewer(
                   child: Center(
                     child: CachedNetworkImage(
-                      imageUrl: e.photoUrl!,
+                      imageUrl: item.url,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -342,9 +358,13 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
                       final i = _controller.hasClients
                           ? (_controller.page ?? widget.initialIndex.toDouble()).round()
                           : widget.initialIndex;
-                      final e = widget.photos[i.clamp(0, widget.photos.length - 1)];
+                      final item = widget.items[i.clamp(0, widget.items.length - 1)];
+                      final e = item.entry;
+                      final photoLabel = e.photoUrls.length > 1
+                          ? ' · foto ${item.photoIndex + 1}/${e.photoUrls.length}'
+                          : '';
                       return Text(
-                        '${DateFormat('d MMMM yyyy', 'es').format(e.date)} · ${e.weight.toStringAsFixed(1)} kg',
+                        '${DateFormat('d MMMM yyyy', 'es').format(e.date)} · ${e.weight.toStringAsFixed(1)} kg$photoLabel',
                         style: const TextStyle(color: Colors.white, fontSize: 14),
                       );
                     },
@@ -354,14 +374,14 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
                     height: 64,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount: widget.photos.length,
+                      itemCount: widget.items.length,
                       itemBuilder: (_, i) {
-                        final e = widget.photos[i];
-                        final selected = _compareWith?.id == e.id;
+                        final item = widget.items[i];
+                        final selected = _compareWith?.id == item.entryId;
                         return GestureDetector(
                           onTap: () {
                             setState(() {
-                              _compareWith = selected ? null : e;
+                              _compareWith = selected ? null : item.entry;
                             });
                           },
                           child: Container(
@@ -377,7 +397,7 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(6),
                               child: CachedNetworkImage(
-                                imageUrl: e.photoUrl!,
+                                imageUrl: item.url,
                                 fit: BoxFit.cover,
                               ),
                             ),

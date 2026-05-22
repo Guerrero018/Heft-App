@@ -191,9 +191,11 @@ class BodyMeasuresViewSet(viewsets.ModelViewSet):
     ordering = ["-date"]
 
     def get_queryset(self):
-        qs = BodyMeasures.objects.filter(user=self.request.user)
+        qs = BodyMeasures.objects.filter(user=self.request.user).prefetch_related(
+            "measure_photos"
+        )
         if self.request.query_params.get("has_photo") == "true":
-            qs = qs.exclude(Q(photo="") | Q(photo__isnull=True))
+            qs = qs.filter(measure_photos__isnull=False).distinct()
         return qs
 
     def get_serializer_context(self):
@@ -229,6 +231,6 @@ class BodyMeasuresViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="progress-photos")
     def progress_photos(self, request):
-        qs = self.get_queryset().exclude(Q(photo="") | Q(photo__isnull=True))
+        qs = self.get_queryset().filter(measure_photos__isnull=False).distinct()
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)

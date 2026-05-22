@@ -188,6 +188,44 @@ class BodyMeasuresAPITests(APITestCase):
         response = self.client.get(f"{self.base_url}{entry.id}/")
         self.assertEqual(response.status_code, 404)
 
+    def test_create_entry_with_up_to_four_photos(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        uploads = [
+            SimpleUploadedFile(f"p{i}.jpg", b"file", content_type="image/jpeg")
+            for i in range(4)
+        ]
+        response = self.client.post(
+            self.base_url,
+            {
+                "weight": 77,
+                "date": "2026-05-21",
+                "photos": uploads,
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(response.data["photos"]), 4)
+        self.assertIsNotNone(response.data["photo"])
+
+    def test_create_entry_rejects_more_than_four_photos(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        uploads = [
+            SimpleUploadedFile(f"p{i}.jpg", b"file", content_type="image/jpeg")
+            for i in range(5)
+        ]
+        response = self.client.post(
+            self.base_url,
+            {
+                "weight": 77,
+                "date": "2026-05-21",
+                "photos": uploads,
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 400)
+
     def test_delete_reverts_user_weight_to_previous_entry(self):
         BodyMeasures.objects.create(user=self.user, weight=80, date=date(2026, 5, 1))
         latest = BodyMeasures.objects.create(

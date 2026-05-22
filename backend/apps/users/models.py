@@ -2,6 +2,9 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 
+from .storage.supabase_storage import select_body_storage, select_profile_storage
+from .upload_paths import body_measure_photo_path, profile_picture_path
+
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     height = models.FloatField(null=True, blank=True, help_text="Height in cm")
@@ -20,7 +23,12 @@ class User(AbstractUser):
     muscle_focus = models.JSONField(default=list, blank=True)
     
     weight = models.FloatField(null=True, blank=True, help_text="Current weight in kg")
-    profile_picture = models.ImageField(upload_to="profile_pics", null=True, blank=True)
+    profile_picture = models.ImageField(
+        upload_to=profile_picture_path,
+        storage=select_profile_storage(),
+        null=True,
+        blank=True,
+    )
     
     is_onboarded = models.BooleanField(default=False)
     track_rpe = models.BooleanField(default=False, help_text="User preference to track RPE")
@@ -33,7 +41,6 @@ class BodyMeasures(models.Model):
     weight = models.FloatField(help_text="Weight in kg")
     date = models.DateField()
     notes = models.TextField(blank=True)
-    photo = models.ImageField(upload_to="body_measures", blank=True, null=True)
     # Optional body measurements (cm)
     neck_cm = models.FloatField(null=True, blank=True)
     chest_cm = models.FloatField(null=True, blank=True)
@@ -53,6 +60,28 @@ class BodyMeasures(models.Model):
 
     def __str__(self):
         return f"{self.user.username} — {self.date} ({self.weight} kg)"
+
+
+class BodyMeasurePhoto(models.Model):
+    MAX_PER_ENTRY = 4
+
+    body_measure = models.ForeignKey(
+        BodyMeasures,
+        on_delete=models.CASCADE,
+        related_name="measure_photos",
+    )
+    image = models.ImageField(
+        upload_to=body_measure_photo_path,
+        storage=select_body_storage(),
+    )
+    order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"Foto {self.order} — {self.body_measure_id}"
 
 
 class PasswordResetCode(models.Model):

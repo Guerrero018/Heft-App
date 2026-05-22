@@ -148,7 +148,7 @@ class _FilledProgressSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final latest = entries.first;
-    final photos = entries.where((e) => e.hasPhoto).take(4).toList();
+    final thumbs = latest.photoUrls.take(4).toList();
 
     double? weightDelta;
     if (entries.length >= 2) {
@@ -197,13 +197,13 @@ class _FilledProgressSummary extends StatelessWidget {
                   const Divider(color: Colors.white12, height: 1),
                   const SizedBox(height: 12),
                   EntryMeasureChips(entry: latest, compact: true),
-                  if (photos.isNotEmpty) ...[
+                  if (thumbs.isNotEmpty) ...[
                     const SizedBox(height: 14),
                     SizedBox(
                       height: 64,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
-                        itemCount: photos.length,
+                        itemCount: thumbs.length,
                         separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (_, i) => ClipRRect(
                           borderRadius: BorderRadius.circular(10),
@@ -211,7 +211,7 @@ class _FilledProgressSummary extends StatelessWidget {
                             width: 48,
                             height: 64,
                             child: CachedNetworkImage(
-                              imageUrl: photos[i].photoUrl!,
+                              imageUrl: thumbs[i],
                               fit: BoxFit.cover,
                             ),
                           ),

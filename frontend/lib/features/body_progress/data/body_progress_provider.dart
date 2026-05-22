@@ -94,7 +94,7 @@ class BodyProgressNotifier extends Notifier<BodyProgressState> {
     required double weight,
     required DateTime date,
     String notes = '',
-    String? imagePath,
+    List<String> imagePaths = const [],
     double? neckCm,
     double? chestCm,
     double? waistCm,
@@ -122,18 +122,26 @@ class BodyProgressNotifier extends Notifier<BodyProgressState> {
         if (thighRightCm != null) 'thigh_right_cm': thighRightCm,
       };
 
-      if (imagePath != null) {
-        formMap['photo'] = await MultipartFile.fromFile(
-          imagePath,
-          filename: 'progress_${DateTime.now().millisecondsSinceEpoch}.jpg',
-          contentType: DioMediaType('image', 'jpeg'),
-        );
+      final hasImages = imagePaths.isNotEmpty;
+      dynamic payload = formMap;
+      if (hasImages) {
+        final formData = FormData.fromMap(formMap);
+        for (var i = 0; i < imagePaths.length; i++) {
+          formData.files.add(
+            MapEntry(
+              'photos',
+              await MultipartFile.fromFile(
+                imagePaths[i],
+                filename: 'progress_${DateTime.now().millisecondsSinceEpoch}_$i.jpg',
+                contentType: DioMediaType('image', 'jpeg'),
+              ),
+            ),
+          );
+        }
+        payload = formData;
       }
 
-      await apiClient.post(
-        'body-measures/',
-        data: imagePath != null ? FormData.fromMap(formMap) : formMap,
-      );
+      await apiClient.post('body-measures/', data: payload);
       await loadAll(force: true);
       return true;
     } on DioException catch (e) {
