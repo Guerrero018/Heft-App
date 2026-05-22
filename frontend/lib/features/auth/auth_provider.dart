@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart' as gsi;
 import '../../core/api/api_client.dart';
 import '../../core/api/constants.dart';
+import '../../core/auth/session_manager.dart';
 
 String extractApiErrorMessage(
   dynamic data, {
@@ -93,7 +94,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   @override
   AuthState build() {
-    // Verificamos la sesión en el siguiente frame para no bloquear el build
+    SessionManager.onSessionExpired = logout;
     Future.microtask(() => checkAuth());
     return AuthState(isInitializing: true);
   }
@@ -318,9 +319,14 @@ class AuthNotifier extends Notifier<AuthState> {
     await _storage.delete(key: AppConstants.tokenKey);
     await _storage.delete(key: AppConstants.refreshTokenKey);
     await _storage.delete(key: AppConstants.onboardedKey);
-    
-    // Reiniciamos el estado a cero
-    state = AuthState(isAuthenticated: false, user: null, isOnboarded: false);
+    await _storage.delete(key: 'user_data');
+
+    state = AuthState(
+      isAuthenticated: false,
+      user: null,
+      isOnboarded: false,
+      isInitializing: false,
+    );
   }
 
   Future<void> loginWithGoogle() async {
@@ -465,7 +471,18 @@ class AuthNotifier extends Notifier<AuthState> {
       if (response.statusCode == 200) {
         final user = response.data;
         await _storage.write(key: 'user_data', value: jsonEncode(user));
-        state = state.copyWith(user: user, isAuthenticated: true, isOnboarded: user['is_onboarded'] == true);
+        state = state.copyWith(
+          user: user,
+          isAuthenticated: true,
+          isOnboarded: user['is_onboarded'] == true,
+          isInitializing: false,
+        );
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        await logout();
+      } else {
+        print('Error syncing profile: $e');
       }
     } catch (e) {
       print('Error syncing profile: $e');
@@ -493,8 +510,8 @@ class AuthNotifier extends Notifier<AuthState> {
           } catch (_) {}
         }
 
-        // SINCRONIZACIÓN: Refrescar datos desde el servidor en segundo plano
-        syncProfile();
+        await syncProfile();
+        state = state.copyWith(isInitializing: false);
       } else {
         state = state.copyWith(isInitializing: false, isAuthenticated: false);
       }
