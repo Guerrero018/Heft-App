@@ -53,5 +53,6 @@ urlpatterns = [
         path('', include('apps.routines.urls')),
         path('', include('apps.workouts.urls')),
         path('', include('apps.statistics.urls')),
+        path('', include('apps.users.urls')),
     ])),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

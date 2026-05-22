@@ -5,9 +5,22 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import PasswordResetCode
+from .models import BodyMeasures, PasswordResetCode
 
 User = get_user_model()
+
+
+def resolve_media_url(file_field, request=None):
+    if not file_field:
+        return None
+    url = file_field.url
+    if url.startswith("/media/"):
+        if request:
+            return request.build_absolute_uri(url)
+        return f"http://10.0.2.2:8000{url}"
+    if url.startswith("http://"):
+        return url.replace("http://", "https://", 1)
+    return url
 
 class CustomUserSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(required=False, allow_null=True)
@@ -31,18 +44,10 @@ class CustomUserSerializer(serializers.ModelSerializer):
         
         # Lógica para obtener la URL correcta
         if instance.profile_picture:
-            url = instance.profile_picture.url
-            # Si es local, asegurar absoluta
-            if url.startswith('/media/'):
-                request = self.context.get('request')
-                if request:
-                    url = request.build_absolute_uri(url)
-                else:
-                    url = f"http://10.0.2.2:8000{url}"
-            # Asegurar HTTPS si es Cloudinary pero viene como HTTP
-            elif url.startswith('http://'):
-                url = url.replace('http://', 'https://', 1)
-            ret['profile_picture'] = url
+            ret['profile_picture'] = resolve_media_url(
+                instance.profile_picture,
+                self.context.get("request"),
+            )
         else:
             # Foto por defecto oficial de Heft
             ret['profile_picture'] = "https://res.cloudinary.com/dcmhsvy2l/image/upload/v1776343470/DefaultProfile.png"
@@ -187,3 +192,57 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         reset_code.save(update_fields=["used_at"])
 
         return user
+
+
+class BodyMeasuresSerializer(serializers.ModelSerializer):
+    photo = serializers.ImageField(required=False, allow_null=True)
+
+    class Meta:
+        model = BodyMeasures
+        fields = (
+            "id",
+            "weight",
+            "date",
+            "notes",
+            "photo",
+            "neck_cm",
+            "chest_cm",
+            "waist_cm",
+            "hips_cm",
+            "shoulders_cm",
+            "bicep_left_cm",
+            "bicep_right_cm",
+            "thigh_left_cm",
+            "thigh_right_cm",
+        )
+        read_only_fields = ("id",)
+
+    def validate_weight(self, value):
+        if value <= 0 or value > 500:
+            raise serializers.ValidationError("El peso debe estar entre 0 y 500 kg.")
+        return value
+
+    def validate(self, attrs):
+        measurement_fields = (
+            "neck_cm",
+            "chest_cm",
+            "waist_cm",
+            "hips_cm",
+            "shoulders_cm",
+            "bicep_left_cm",
+            "bicep_right_cm",
+            "thigh_left_cm",
+            "thigh_right_cm",
+        )
+        for field in measurement_fields:
+            value = attrs.get(field)
+            if value is not None and (value <= 0 or value > 300):
+                raise serializers.ValidationError(
+                    {field: "La medida debe estar entre 0 y 300 cm."}
+                )
+        return attrs
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret["photo"] = resolve_media_url(instance.photo, self.context.get("request"))
+        return ret

@@ -12,14 +12,17 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
-from rest_framework import generics, permissions, status
+from django.db.models import Q
+from rest_framework import generics, permissions, status, viewsets, filters
+from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import PasswordResetCode
+from .models import BodyMeasures, PasswordResetCode
 from .serializers import (
+    BodyMeasuresSerializer,
     CustomUserSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
@@ -170,3 +173,62 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     callback_url = "https://heft-backend-ywi0.onrender.com/accounts/google/login/callback/" 
     client_class = OAuth2Client
+
+
+def _sync_user_weight_from_measures(user):
+    latest = BodyMeasures.objects.filter(user=user).order_by("-date", "-id").first()
+    if latest:
+        user.weight = latest.weight
+        user.save(update_fields=["weight"])
+
+
+class BodyMeasuresViewSet(viewsets.ModelViewSet):
+    serializer_class = BodyMeasuresSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["date", "weight"]
+    ordering = ["-date"]
+
+    def get_queryset(self):
+        qs = BodyMeasures.objects.filter(user=self.request.user)
+        if self.request.query_params.get("has_photo") == "true":
+            qs = qs.exclude(Q(photo="") | Q(photo__isnull=True))
+        return qs
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+        _sync_user_weight_from_measures(self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save()
+        _sync_user_weight_from_measures(self.request.user)
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        _sync_user_weight_from_measures(self.request.user)
+
+    @action(detail=False, methods=["get"], url_path="weight-history")
+    def weight_history(self, request):
+        rows = (
+            self.get_queryset()
+            .order_by("date", "id")
+            .values("date", "weight")
+        )
+        return Response(
+            [
+                {"date": row["date"].isoformat(), "weight": row["weight"]}
+                for row in rows
+            ]
+        )
+
+    @action(detail=False, methods=["get"], url_path="progress-photos")
+    def progress_photos(self, request):
+        qs = self.get_queryset().exclude(Q(photo="") | Q(photo__isnull=True))
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
