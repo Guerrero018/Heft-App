@@ -287,8 +287,23 @@ CELERY_BEAT_SCHEDULE = {
 # Firebase
 # ---------------------------------------------------------------------------
 
-# Full Firebase Admin service-account JSON as a single env var (base64 or raw JSON string)
-FIREBASE_CREDENTIALS_JSON = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
+def _load_firebase_credentials_json() -> str:
+    """JSON de cuenta de servicio: env inline o archivo (recomendado en local)."""
+    inline = os.getenv("FIREBASE_CREDENTIALS_JSON", "").strip()
+    if inline:
+        return inline
+    file_env = os.getenv("FIREBASE_CREDENTIALS_FILE", "").strip()
+    if not file_env:
+        return ""
+    path = Path(file_env)
+    if not path.is_absolute():
+        path = BASE_DIR / path
+    if path.is_file():
+        return path.read_text(encoding="utf-8")
+    return ""
+
+
+FIREBASE_CREDENTIALS_JSON = _load_firebase_credentials_json()
 
 # Set to "false" in non-production environments to skip real push sends
 NOTIFICATIONS_ENABLED = os.getenv("NOTIFICATIONS_ENABLED", "true").lower() == "true"

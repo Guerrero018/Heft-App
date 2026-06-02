@@ -26,13 +26,45 @@ class _NotificationSettingsScreenState
   }
 
   Future<void> _checkPermission() async {
+    if (!NotificationService.isFirebaseConfigured) {
+      if (mounted) {
+        setState(() => _permissionStatus = AuthorizationStatus.notDetermined);
+      }
+      return;
+    }
+    if (!NotificationService.isFirebaseAvailable) {
+      await NotificationService.instance.init();
+    }
     final status = await NotificationService.instance.getPermissionStatus();
     if (mounted) setState(() => _permissionStatus = status);
   }
 
   Future<void> _requestPermission() async {
-    await NotificationService.instance.init();
-    await _checkPermission();
+    if (!NotificationService.isFirebaseConfigured) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Falta google-services.json. Sigue docs/FIREBASE_NOTIFICATIONS.md '
+            'y ejecuta: dart run tool/generate_firebase_options.dart',
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
+    final status = await NotificationService.instance.requestPermissions();
+    if (!mounted) return;
+
+    setState(() => _permissionStatus = status);
+
+    if (status == AuthorizationStatus.authorized ||
+        status == AuthorizationStatus.provisional) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permisos de notificación activados')),
+      );
+    }
   }
 
   void _patch(NotificationPreferences updated) {
@@ -73,10 +105,14 @@ class _NotificationSettingsScreenState
   }
 
   Widget _buildBody(NotificationPreferences prefs) {
+    final firebaseReady = NotificationService.isFirebaseConfigured;
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
-        if (_permissionStatus != null &&
+        if (!firebaseReady)
+          const _FirebaseSetupBanner()
+        else if (_permissionStatus != null &&
             _permissionStatus != AuthorizationStatus.authorized)
           _PermissionBanner(onRequest: _requestPermission),
 
@@ -276,6 +312,52 @@ class _NotificationSettingsScreenState
 // ============================================================================
 // Subwidgets
 // ============================================================================
+
+class _FirebaseSetupBanner extends StatelessWidget {
+  const _FirebaseSetupBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.cloud_off_outlined, color: Colors.amber),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Firebase no configurado en esta build',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Para push reales: descarga google-services.json del proyecto '
+                  'Firebase y colócalo en frontend/android/app/. Luego ejecuta '
+                  'dart run tool/generate_firebase_options.dart y vuelve a '
+                  'compilar la app. Guía: docs/FIREBASE_NOTIFICATIONS.md',
+                  style: TextStyle(color: AppTheme.hintColor, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _PermissionBanner extends StatelessWidget {
   final VoidCallback onRequest;

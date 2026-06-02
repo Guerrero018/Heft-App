@@ -47,3 +47,8 @@ dependencies {
 flutter {
     source = "../.."
 }
+
+// Solo si existe google-services.json (ver docs/FIREBASE_NOTIFICATIONS.md)
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}

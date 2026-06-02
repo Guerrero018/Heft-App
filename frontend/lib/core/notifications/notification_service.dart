@@ -6,25 +6,28 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 
+import '../../firebase_options.dart';
 import '../api/api_client.dart';
 
 /// Background message handler — must be a top-level function.
 @pragma('vm:entry-point')
-Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+Future<void> firebaseBackgroundMessageHandler(RemoteMessage message) async {
+  if (Firebase.apps.isEmpty) {
+    return;
+  }
+  // App already initialized in main when FCM is configured.
 }
 
 /// Central service for Firebase Cloud Messaging.
 ///
-/// Call [init] once from main() after Firebase.initializeApp().
-/// Call [registerTokenWithBackend] after the user logs in.
-/// Call [deactivateToken] on logout.
+/// Call [init] once from main() after [Firebase.initializeApp] succeeds.
+/// If Firebase is not configured, all methods no-op safely.
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
-  final _messaging = FirebaseMessaging.instance;
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
   static const _androidChannelId = 'heft_main_channel';
@@ -35,20 +38,39 @@ class NotificationService {
   String? get currentToken => _currentToken;
 
   bool _ready = false;
+  bool get isReady => _ready;
+
+  /// True when [Firebase.initializeApp] completed successfully.
+  static bool get isFirebaseAvailable => Firebase.apps.isNotEmpty;
+
+  /// Firebase configurado en el proyecto (google-services.json + generator).
+  static bool get isFirebaseConfigured => DefaultFirebaseOptions.isConfigured;
+
+  FirebaseMessaging? get _messaging =>
+      isFirebaseAvailable ? FirebaseMessaging.instance : null;
 
   Future<void> init() async {
-    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+    if (!isFirebaseAvailable) {
+      if (kDebugMode) {
+        debugPrint(
+          'NotificationService: Firebase no inicializado — FCM desactivado. '
+          'Añade google-services.json y ejecuta flutterfire configure.',
+        );
+      }
+      return;
+    }
+
+    final messaging = _messaging;
+    if (messaging == null) return;
+
+    FirebaseMessaging.onBackgroundMessage(firebaseBackgroundMessageHandler);
     await _setupLocalNotifications();
-    await _requestPermissions();
-    await _loadToken();
+    await _requestPermissions(messaging);
+    await _loadToken(messaging);
     _listenForegroundMessages();
-    _listenTokenRefresh();
+    _listenTokenRefresh(messaging);
     _ready = true;
   }
-
-  // -------------------------------------------------------------------------
-  // Setup
-  // -------------------------------------------------------------------------
 
   Future<void> _setupLocalNotifications() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -73,31 +95,51 @@ class NotificationService {
     }
   }
 
-  Future<void> _requestPermissions() async {
-    final settings = await _messaging.requestPermission(
+  /// Pide permiso del sistema (Android 13+) y de FCM (iOS / fallback).
+  Future<AuthorizationStatus> requestPermissions() async {
+    if (!isFirebaseConfigured || !isFirebaseAvailable) {
+      return AuthorizationStatus.notDetermined;
+    }
+
+    final messaging = _messaging;
+    if (messaging == null) return AuthorizationStatus.notDetermined;
+
+    if (Platform.isAndroid) {
+      await Permission.notification.request();
+    }
+
+    final settings = await messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
-    if (kDebugMode) {
-      debugPrint(
-        'FCM permission: ${settings.authorizationStatus}',
-      );
+
+    if (!_ready) {
+      await _setupLocalNotifications();
+      await _loadToken(messaging);
+      _listenForegroundMessages();
+      _listenTokenRefresh(messaging);
+      _ready = true;
     }
+
+    if (kDebugMode) {
+      debugPrint('FCM permission: ${settings.authorizationStatus}');
+    }
+    return settings.authorizationStatus;
   }
 
-  Future<void> _loadToken() async {
+  Future<void> _requestPermissions(FirebaseMessaging messaging) async {
+    await requestPermissions();
+  }
+
+  Future<void> _loadToken(FirebaseMessaging messaging) async {
     try {
-      _currentToken = await _messaging.getToken();
+      _currentToken = await messaging.getToken();
       if (kDebugMode) debugPrint('FCM token: $_currentToken');
     } catch (e) {
       if (kDebugMode) debugPrint('FCM getToken error: $e');
     }
   }
-
-  // -------------------------------------------------------------------------
-  // Listeners
-  // -------------------------------------------------------------------------
 
   void _listenForegroundMessages() {
     FirebaseMessaging.onMessage.listen((message) {
@@ -123,16 +165,12 @@ class NotificationService {
     });
   }
 
-  void _listenTokenRefresh() {
-    _messaging.onTokenRefresh.listen((newToken) async {
+  void _listenTokenRefresh(FirebaseMessaging messaging) {
+    messaging.onTokenRefresh.listen((newToken) async {
       _currentToken = newToken;
       await registerTokenWithBackend(newToken);
     });
   }
-
-  // -------------------------------------------------------------------------
-  // Token registration
-  // -------------------------------------------------------------------------
 
   /// Registers the FCM token with the Heft backend after login.
   Future<void> registerTokenWithBackend(String token) async {
@@ -167,8 +205,25 @@ class NotificationService {
 
   /// Returns the current FCM authorization status.
   Future<AuthorizationStatus> getPermissionStatus() async {
-    if (!_ready) return AuthorizationStatus.notDetermined;
-    final settings = await _messaging.getNotificationSettings();
+    if (!isFirebaseConfigured || !isFirebaseAvailable) {
+      return AuthorizationStatus.notDetermined;
+    }
+
+    if (Platform.isAndroid) {
+      final androidStatus = await Permission.notification.status;
+      if (!androidStatus.isGranted) {
+        return AuthorizationStatus.denied;
+      }
+    }
+
+    final messaging = _messaging;
+    if (messaging == null) return AuthorizationStatus.notDetermined;
+
+    if (!_ready) {
+      return AuthorizationStatus.notDetermined;
+    }
+
+    final settings = await messaging.getNotificationSettings();
     return settings.authorizationStatus;
   }
 }

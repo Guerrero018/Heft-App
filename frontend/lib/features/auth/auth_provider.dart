@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
@@ -187,9 +188,14 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   void _registerFcmTokenIfAvailable() {
-    final fcmToken = NotificationService.instance.currentToken;
-    if (fcmToken != null) {
-      NotificationService.instance.registerTokenWithBackend(fcmToken);
+    if (!NotificationService.isFirebaseAvailable) return;
+    try {
+      final fcmToken = NotificationService.instance.currentToken;
+      if (fcmToken != null) {
+        NotificationService.instance.registerTokenWithBackend(fcmToken);
+      }
+    } catch (e, st) {
+      debugPrint('FCM register skipped: $e\n$st');
     }
   }
 
@@ -581,7 +587,13 @@ class AuthNotifier extends Notifier<AuthState> {
             'El servidor no respondió a tiempo. Comprueba que el backend está en marcha.',
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Error inesperado: $e');
+      if (state.isAuthenticated) {
+        clearError();
+        state = state.copyWith(isLoading: false);
+        debugPrint('Aviso tras login con Google (sesión OK): $e');
+      } else {
+        state = state.copyWith(isLoading: false, error: 'Error inesperado: $e');
+      }
     }
   }
 
@@ -697,11 +709,7 @@ class AuthNotifier extends Notifier<AuthState> {
         await syncProfile();
         state = state.copyWith(isInitializing: false);
 
-        // Re-register FCM token in case it rotated since last session
-        final fcmToken = NotificationService.instance.currentToken;
-        if (fcmToken != null) {
-          await NotificationService.instance.registerTokenWithBackend(fcmToken);
-        }
+        _registerFcmTokenIfAvailable();
       } else {
         state = state.copyWith(isInitializing: false, isAuthenticated: false);
       }

@@ -13,6 +13,19 @@ logger = logging.getLogger(__name__)
 _app = None
 
 
+def _credentials_json() -> str:
+    """JSON de cuenta de servicio desde Django settings o env."""
+    try:
+        from django.conf import settings
+
+        value = getattr(settings, "FIREBASE_CREDENTIALS_JSON", "") or ""
+        if value.strip():
+            return value.strip()
+    except Exception:
+        pass
+    return os.getenv("FIREBASE_CREDENTIALS_JSON", "").strip()
+
+
 def _get_app():
     """Return the initialised Firebase app, creating it once if needed."""
     global _app
@@ -23,10 +36,10 @@ def _get_app():
         import firebase_admin
         from firebase_admin import credentials
 
-        creds_json = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
+        creds_json = _credentials_json()
         if not creds_json:
             logger.warning(
-                "FIREBASE_CREDENTIALS_JSON not set — push notifications disabled."
+                "Firebase credentials not set — push notifications disabled."
             )
             return None
 
