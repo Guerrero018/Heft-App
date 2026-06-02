@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -87,6 +88,18 @@ String _mapLoginErrorMessage(String? message) {
   return message;
 }
 
+String _connectionErrorMessage(DioException e) {
+  if (e.type == DioExceptionType.connectionTimeout ||
+      e.type == DioExceptionType.receiveTimeout ||
+      e.type == DioExceptionType.sendTimeout) {
+    return 'No se pudo conectar con el servidor. Comprueba que el backend está en marcha (${AppConstants.baseUrl}).';
+  }
+  if (e.type == DioExceptionType.connectionError) {
+    return 'No hay conexión con el servidor. ¿Está el backend encendido y en la misma Wi‑Fi?';
+  }
+  return 'Error de conexión con el servidor';
+}
+
 class AuthNotifier extends Notifier<AuthState> {
   final _storage = const FlutterSecureStorage();
 
@@ -136,6 +149,40 @@ class AuthNotifier extends Notifier<AuthState> {
     state = state.copyWith(error: null);
   }
 
+  Future<bool> _applyAuthSuccess({
+    required String access,
+    required String refresh,
+    Map<String, dynamic>? user,
+  }) async {
+    await _storage.write(key: AppConstants.tokenKey, value: access);
+    await _storage.write(key: AppConstants.refreshTokenKey, value: refresh);
+
+    if (user == null) {
+      await syncProfile();
+      if (!state.isAuthenticated || state.user == null) {
+        await logout();
+        return false;
+      }
+      state = state.copyWith(isLoading: false);
+      return true;
+    }
+
+    final isOnboarded = user['is_onboarded'] == true;
+    await _storage.write(
+      key: AppConstants.onboardedKey,
+      value: isOnboarded.toString(),
+    );
+    await _storage.write(key: 'user_data', value: jsonEncode(user));
+
+    state = state.copyWith(
+      isLoading: false,
+      isAuthenticated: true,
+      isOnboarded: isOnboarded,
+      user: user,
+    );
+    return true;
+  }
+
   @override
   AuthState build() {
     SessionManager.onSessionExpired = logout;
@@ -176,32 +223,29 @@ class AuthNotifier extends Notifier<AuthState> {
       );
 
       if (response.statusCode == 200) {
-        final access = response.data['access'];
-        final refresh = response.data['refresh'];
-
-        await _storage.write(key: AppConstants.tokenKey, value: access);
-        await _storage.write(key: AppConstants.refreshTokenKey, value: refresh);
-
-        final user = response.data['user'];
-        final isOnboarded = user != null ? user['is_onboarded'] == true : false;
-
-        // Guardar estado de onboarding y datos del usuario localmente
-        await _storage.write(
-          key: AppConstants.onboardedKey,
-          value: isOnboarded.toString(),
+        final data = Map<String, dynamic>.from(response.data as Map);
+        final ok = await _applyAuthSuccess(
+          access: data['access'] as String,
+          refresh: data['refresh'] as String,
+          user: data['user'] != null
+              ? Map<String, dynamic>.from(data['user'] as Map)
+              : null,
         );
-        if (user != null) {
-          await _storage.write(key: 'user_data', value: jsonEncode(user));
+        if (!ok) {
+          state = state.copyWith(
+            isLoading: false,
+            error: 'No se pudo cargar tu perfil tras iniciar sesión',
+          );
         }
-
-        state = state.copyWith(
-          isLoading: false,
-          isAuthenticated: true,
-          isOnboarded: isOnboarded,
-          user: user,
-        );
       }
     } on DioException catch (e) {
+      if (e.response == null) {
+        state = state.copyWith(
+          isLoading: false,
+          error: _connectionErrorMessage(e),
+        );
+        return;
+      }
       final raw = e.response?.data['detail'] ?? e.response?.data['error'];
       final message = _mapLoginErrorMessage(raw?.toString());
       state = state.copyWith(isLoading: false, error: message);
@@ -434,58 +478,59 @@ class AuthNotifier extends Notifier<AuthState> {
       print(
         '📡 Enviando token al servidor: ${AppConstants.baseUrl}auth/social/google/',
       );
-      final response = await apiClient
-          .post(
-            'auth/social/google/',
-            data: {'access_token': idToken, 'code': ''},
-          )
-          .timeout(const Duration(seconds: 15));
+      final response = await apiClient.post(
+        'auth/social/google/',
+        data: {'access_token': idToken, 'code': ''},
+      );
 
       print(
         '📥 Respuesta del servidor recibida. Status: ${response.statusCode}',
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final access = response.data['access'];
-        final refresh = response.data['refresh'];
-
-        await _storage.write(key: AppConstants.tokenKey, value: access);
-        await _storage.write(key: AppConstants.refreshTokenKey, value: refresh);
-
-        final user = response.data['user'];
-        final isOnboarded = user != null ? user['is_onboarded'] == true : false;
-
-        // Guardar estado de onboarding y datos locales
-        await _storage.write(
-          key: AppConstants.onboardedKey,
-          value: isOnboarded.toString(),
+        final data = Map<String, dynamic>.from(response.data as Map);
+        final ok = await _applyAuthSuccess(
+          access: data['access'] as String,
+          refresh: data['refresh'] as String,
+          user: data['user'] != null
+              ? Map<String, dynamic>.from(data['user'] as Map)
+              : null,
         );
-        if (user != null) {
-          await _storage.write(key: 'user_data', value: jsonEncode(user));
+        if (!ok) {
+          state = state.copyWith(
+            isLoading: false,
+            error: 'No se pudo cargar tu perfil tras iniciar sesión con Google',
+          );
+        } else {
+          print('🎊 Login exitoso! Onboarded: ${state.isOnboarded}');
         }
-
-        print('🎊 Login exitoso! Onboarded: $isOnboarded');
-
-        state = state.copyWith(
-          isLoading: false,
-          isAuthenticated: true,
-          isOnboarded: isOnboarded,
-          user: user,
-        );
       }
     } on DioException catch (e) {
       print('🔥 Error en la petición API: ${e.response?.statusCode}');
+
+      if (e.response == null) {
+        state = state.copyWith(
+          isLoading: false,
+          error: _connectionErrorMessage(e),
+        );
+        return;
+      }
 
       String message = 'Error con el servidor de Google';
       if (e.response?.data != null && e.response?.data is Map) {
         final data = e.response!.data as Map;
         message = data['detail'] ?? data['error'] ?? message;
       } else if (e.response?.data != null && e.response?.data is String) {
-        // El servidor devolvió una página HTML de error (probablemente error 500)
-        message = 'Error del servidor (HTML): ${e.response?.statusCode}';
+        message = 'Error del servidor (${e.response?.statusCode})';
       }
 
       state = state.copyWith(isLoading: false, error: message);
+    } on TimeoutException {
+      state = state.copyWith(
+        isLoading: false,
+        error:
+            'El servidor no respondió a tiempo. Comprueba que el backend está en marcha.',
+      );
     } catch (e) {
       print('💥 Error inesperado: $e');
       state = state.copyWith(isLoading: false, error: 'Error inesperado: $e');
