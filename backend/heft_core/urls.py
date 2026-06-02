@@ -24,10 +24,34 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+from django.db import connection
 from django.http import JsonResponse
 
+
 def health_check(request):
-    return JsonResponse({"status": "ok", "message": "Heft API is awake!", "version": "1.0.1"})
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except Exception:
+        return JsonResponse(
+            {
+                "status": "error",
+                "db": "unavailable",
+                "message": "Heft API is up but database is unreachable",
+                "version": "1.0.1",
+            },
+            status=503,
+        )
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "db": "ok",
+            "message": "Heft API is awake!",
+            "version": "1.0.1",
+        }
+    )
 
 urlpatterns = [
     path('health/', health_check, name='health_check'),
