@@ -1,11 +1,25 @@
+import os
+
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .cron import run_scheduled_notification_jobs
 from .models import DeviceToken, UserNotificationPreferences
 from .serializers import DeviceTokenSerializer, UserNotificationPreferencesSerializer
+
+
+def _cron_secret_valid(request) -> bool:
+    expected = getattr(settings, "CRON_SECRET", "") or os.getenv("CRON_SECRET", "")
+    if not expected:
+        return False
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:].strip() == expected
+    return request.headers.get("X-Cron-Secret", "").strip() == expected
 
 
 class NotificationPreferencesView(APIView):
@@ -85,3 +99,35 @@ class DeviceTokenDestroyView(APIView):
         token.is_active = False
         token.save(update_fields=["is_active"])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CronNotificationsView(APIView):
+    """Dispara recordatorios programados (sustituto de Celery Beat vía HTTP).
+
+    Protegido con CRON_SECRET:
+      Authorization: Bearer <CRON_SECRET>
+    o cabecera X-Cron-Secret: <CRON_SECRET>
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        return self._run(request)
+
+    def get(self, request):
+        return self._run(request)
+
+    def _run(self, request):
+        if not getattr(settings, "CRON_SECRET", ""):
+            return Response(
+                {"detail": "CRON_SECRET no configurado en el servidor."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        if not _cron_secret_valid(request):
+            return Response(
+                {"detail": "No autorizado."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        results = run_scheduled_notification_jobs()
+        return Response({"ok": True, "results": results})

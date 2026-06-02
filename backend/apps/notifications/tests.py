@@ -1,8 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
+from unittest.mock import patch
 
 from .models import DeviceToken, NotificationLog, UserNotificationPreferences
 
@@ -146,3 +148,35 @@ class NotificationLogTests(APITestCase):
             status="sent",
         ).exists()
         self.assertTrue(exists)
+
+
+@override_settings(CRON_SECRET="test-cron-secret", NOTIFICATIONS_ENABLED=True)
+class CronNotificationsTests(APITestCase):
+    def setUp(self):
+        self.url = reverse("cron_notifications")
+        self.client = APIClient()
+
+    def test_requires_secret(self):
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    @patch("apps.notifications.cron.send_workout_reminders", return_value=1)
+    @patch("apps.notifications.cron.send_body_progress_reminders", return_value=0)
+    @patch("apps.notifications.cron.send_weekly_summaries", return_value=0)
+    @patch("apps.notifications.cron.send_inactivity_alerts", return_value=0)
+    def test_post_with_bearer_runs_jobs(self, *_mocks):
+        response = self.client.post(
+            self.url,
+            HTTP_AUTHORIZATION="Bearer test-cron-secret",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["ok"])
+        self.assertEqual(response.data["results"]["workout_reminder"], 1)
+
+    @override_settings(CRON_SECRET="")
+    def test_missing_server_secret_returns_503(self):
+        response = self.client.post(
+            self.url,
+            HTTP_AUTHORIZATION="Bearer anything",
+        )
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)

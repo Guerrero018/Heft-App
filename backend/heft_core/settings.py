@@ -307,3 +307,6 @@ FIREBASE_CREDENTIALS_JSON = _load_firebase_credentials_json()
 
 # Set to "false" in non-production environments to skip real push sends
 NOTIFICATIONS_ENABLED = os.getenv("NOTIFICATIONS_ENABLED", "true").lower() == "true"
+
+# Secreto para POST/GET /api/internal/cron/notifications/ (cron-job.org, etc.)
+CRON_SECRET = os.getenv("CRON_SECRET", "")
