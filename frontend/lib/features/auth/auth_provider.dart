@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
@@ -7,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart' as gsi;
 import '../../core/api/api_client.dart';
 import '../../core/api/constants.dart';
 import '../../core/auth/session_manager.dart';
+import '../../core/notifications/notification_service.dart';
 
 String extractApiErrorMessage(
   dynamic data, {
@@ -111,8 +113,8 @@ class AuthNotifier extends Notifier<AuthState> {
 
     final baseOptions = BaseOptions(
       baseUrl: AppConstants.baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 60),
       headers: {'Content-Type': 'application/json'},
     );
     final refreshClient = Dio(baseOptions);
@@ -164,6 +166,7 @@ class AuthNotifier extends Notifier<AuthState> {
         return false;
       }
       state = state.copyWith(isLoading: false);
+      _registerFcmTokenIfAvailable();
       return true;
     }
 
@@ -180,7 +183,20 @@ class AuthNotifier extends Notifier<AuthState> {
       isOnboarded: isOnboarded,
       user: user,
     );
+    _registerFcmTokenIfAvailable();
     return true;
+  }
+
+  void _registerFcmTokenIfAvailable() {
+    if (!NotificationService.isFirebaseAvailable) return;
+    try {
+      final fcmToken = NotificationService.instance.currentToken;
+      if (fcmToken != null) {
+        NotificationService.instance.registerTokenWithBackend(fcmToken);
+      }
+    } catch (e, st) {
+      debugPrint('FCM register skipped: $e\n$st');
+    }
   }
 
   @override
@@ -224,9 +240,20 @@ class AuthNotifier extends Notifier<AuthState> {
 
       if (response.statusCode == 200) {
         final data = Map<String, dynamic>.from(response.data as Map);
+        final access = data['access'] as String?;
+        final refresh = data['refresh'] as String?;
+
+        if (access == null || refresh == null) {
+          state = state.copyWith(
+            isLoading: false,
+            error: 'Respuesta inesperada del servidor.',
+          );
+          return;
+        }
+
         final ok = await _applyAuthSuccess(
-          access: data['access'] as String,
-          refresh: data['refresh'] as String,
+          access: access,
+          refresh: refresh,
           user: data['user'] != null
               ? Map<String, dynamic>.from(data['user'] as Map)
               : null,
@@ -237,6 +264,11 @@ class AuthNotifier extends Notifier<AuthState> {
             error: 'No se pudo cargar tu perfil tras iniciar sesión',
           );
         }
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Error inesperado del servidor (${response.statusCode}).',
+        );
       }
     } on DioException catch (e) {
       if (e.response == null) {
@@ -412,6 +444,9 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Fire-and-forget: deactivate FCM token without blocking the logout flow
+    NotificationService.instance.deactivateToken();
+
     try {
       // Intentar cerrar sesión de Google si existe
       final googleSignIn = gsi.GoogleSignIn();
@@ -447,10 +482,9 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(isLoading: true, error: null);
 
       try {
-        print('⏳ Intentando signOut previo...');
-        await googleSignIn.signOut();
+        await googleSignIn.signOut().timeout(const Duration(seconds: 5));
       } catch (e) {
-        print('ℹ️ Error al cerrar sesión previa (puede ignorarse): $e');
+        // Ignorable: previous session may not exist or Play Services slow
       }
 
       print('🔑 Abriendo selector de cuentas de Google...');
@@ -489,9 +523,20 @@ class AuthNotifier extends Notifier<AuthState> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = Map<String, dynamic>.from(response.data as Map);
+        final access = data['access'] as String?;
+        final refresh = data['refresh'] as String?;
+
+        if (access == null || refresh == null) {
+          state = state.copyWith(
+            isLoading: false,
+            error: 'Respuesta inesperada del servidor. Inténtalo de nuevo.',
+          );
+          return;
+        }
+
         final ok = await _applyAuthSuccess(
-          access: data['access'] as String,
-          refresh: data['refresh'] as String,
+          access: access,
+          refresh: refresh,
           user: data['user'] != null
               ? Map<String, dynamic>.from(data['user'] as Map)
               : null,
@@ -506,7 +551,17 @@ class AuthNotifier extends Notifier<AuthState> {
         }
       }
     } on DioException catch (e) {
-      print('🔥 Error en la petición API: ${e.response?.statusCode}');
+      final isTimeout = e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout;
+
+      if (isTimeout) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'El servidor tardó en responder. Inténtalo de nuevo en unos segundos.',
+        );
+        return;
+      }
 
       if (e.response == null) {
         state = state.copyWith(
@@ -532,8 +587,13 @@ class AuthNotifier extends Notifier<AuthState> {
             'El servidor no respondió a tiempo. Comprueba que el backend está en marcha.',
       );
     } catch (e) {
-      print('💥 Error inesperado: $e');
-      state = state.copyWith(isLoading: false, error: 'Error inesperado: $e');
+      if (state.isAuthenticated) {
+        clearError();
+        state = state.copyWith(isLoading: false);
+        debugPrint('Aviso tras login con Google (sesión OK): $e');
+      } else {
+        state = state.copyWith(isLoading: false, error: 'Error inesperado: $e');
+      }
     }
   }
 
@@ -577,6 +637,8 @@ class AuthNotifier extends Notifier<AuthState> {
           user: updatedUser,
           isAuthenticated: true,
         );
+      } else {
+        state = state.copyWith(isLoading: false);
       }
     } on DioException catch (e) {
       final msg = e.response?.data?.toString() ?? 'Error al actualizar perfil';
@@ -646,6 +708,8 @@ class AuthNotifier extends Notifier<AuthState> {
 
         await syncProfile();
         state = state.copyWith(isInitializing: false);
+
+        _registerFcmTokenIfAvailable();
       } else {
         state = state.copyWith(isInitializing: false, isAuthenticated: false);
       }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/auth_provider.dart';
 import '../edit_profile_screen.dart';
+import '../notifications/notification_settings_screen.dart';
 
 enum ProfileMenuAction {
   personalInfo,
@@ -62,7 +63,10 @@ class ProfileSettingsMenu extends ConsumerWidget {
           MaterialPageRoute(builder: (_) => const EditProfileScreen()),
         );
       case ProfileMenuAction.notifications:
-        _showPlaceholder(context, 'Notificaciones', 'Próximamente.');
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+        );
       case ProfileMenuAction.privacy:
         _showPlaceholder(context, 'Privacidad', 'Próximamente.');
       case ProfileMenuAction.help:
