@@ -85,7 +85,7 @@ cloudinary==1.44.2
 supabase==2.28.0
 # Celery + Beat
 celery==5.4.0
-django-celery-beat==2.7.0
+django-celery-beat==2.9.0
 redis==5.2.1
 # Firebase Admin SDK
 firebase-admin==6.6.0
