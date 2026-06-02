@@ -67,6 +67,12 @@ En la app: **Perfil → Ajustes → Notificaciones → Activar permisos**.
 
 En Android 13+ el sistema mostrará el diálogo de notificaciones.
 
+## Recordatorios automáticos sin Celery (Render free)
+
+Si no usas Background Workers en Render, configura **cron HTTP**:
+
+→ Guía completa: [docs/CRON_NOTIFICATIONS.md](CRON_NOTIFICATIONS.md)
+
 ## Backend (push desde servidor)
 
 En el backend (Render / `.env`) configura:
