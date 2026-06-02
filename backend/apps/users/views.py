@@ -18,18 +18,24 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import BodyMeasures, PasswordResetCode
 from .serializers import (
     BodyMeasuresSerializer,
     CustomUserSerializer,
+    EmailOrUsernameTokenObtainPairSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     RegisterSerializer,
 )
 
 User = get_user_model()
+
+
+class EmailOrUsernameTokenObtainPairView(TokenObtainPairView):
+    serializer_class = EmailOrUsernameTokenObtainPairSerializer
 
 
 class RegisterView(generics.CreateAPIView):
@@ -140,20 +146,34 @@ class GoogleDirectLogin(APIView):
 
         try:
             # Reutilizar el Web Client ID de settings
-            client_id = os.getenv('GOOGLE_WEB_CLIENT_ID')
+            client_id = (
+                os.getenv('GOOGLE_WEB_CLIENT_ID')
+                or settings.SOCIALACCOUNT_PROVIDERS.get('google', {})
+                .get('APP', {})
+                .get('client_id')
+                or '945196821861-6u6hcooaoq5h3s5tv4k2t3r9osa20aa1.apps.googleusercontent.com'
+            )
             
             # Verificar el token con Google
             idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), client_id)
 
             # Extraer info (Google devuelve 'sub' como ID único del usuario)
             email = idinfo['email'].lower().strip()
-            username = email.split('@')[0] # Usar el email como base para el username
-            
-            # 1. Buscar o crear el usuario en Neon
-            user, created = User.objects.get_or_create(
-                email=email,
-                defaults={'username': username}
-            )
+
+            user = User.objects.filter(email__iexact=email).first()
+            if user is None:
+                base_username = email.split('@')[0][:150]
+                username = base_username
+                counter = 1
+                while User.objects.filter(username=username).exists():
+                    suffix = str(counter)
+                    username = f"{base_username[: max(1, 150 - len(suffix))]}{suffix}"
+                    counter += 1
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=User.objects.make_random_password(),
+                )
 
             # 2. Generar tokens JWT de Heft
             refresh = RefreshToken.for_user(user)

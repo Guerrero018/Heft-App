@@ -2,8 +2,11 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.password_validation import validate_password
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .body_measure_photos import (
@@ -15,6 +18,33 @@ from .media_utils import resolve_media_url
 from .models import BodyMeasurePhoto, BodyMeasures, PasswordResetCode
 
 User = get_user_model()
+
+
+class EmailOrUsernameTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Permite usar email o username en el campo `username` del endpoint JWT.
+    """
+
+    default_error_messages = {
+        "no_active_account": "No active account found with the given credentials"
+    }
+
+    def validate(self, attrs):
+        login_value = attrs.get(self.username_field, "")
+
+        if not login_value:
+            raise AuthenticationFailed(
+                self.error_messages["no_active_account"],
+                "no_active_account",
+            )
+
+        user = User.objects.filter(Q(email__iexact=login_value)).first()
+        if user is not None:
+            attrs[self.username_field] = user.get_username()
+
+        data = super().validate(attrs)
+        data["user"] = CustomUserSerializer(self.user, context=self.context).data
+        return data
 
 class CustomUserSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(required=False, allow_null=True)
