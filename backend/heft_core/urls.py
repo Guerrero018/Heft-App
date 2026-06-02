@@ -20,7 +20,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 from apps.users import views as users_views
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
 )
 
@@ -61,7 +60,7 @@ urlpatterns = [
     path('api/auth/check-email/', users_views.CheckEmailView.as_view(), name='auth_check_email'),
     path('api/auth/password-reset/request/', users_views.PasswordResetRequestView.as_view(), name='auth_password_reset_request'),
     path('api/auth/password-reset/confirm/', users_views.PasswordResetConfirmView.as_view(), name='auth_password_reset_confirm'),
-    path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/auth/login/', users_views.EmailOrUsernameTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/profile/', include([
         path('', users_views.ProfileView.as_view(), name='auth_profile'),
