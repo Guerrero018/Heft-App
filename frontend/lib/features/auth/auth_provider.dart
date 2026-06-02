@@ -31,8 +31,10 @@ String extractApiErrorMessage(
 
 class AuthState {
   final bool isAuthenticated;
+
   /// Carga de login/registro/Google (no debe reemplazar toda la app).
   final bool isLoading;
+
   /// Solo verificación de sesión al arrancar (splash en main.dart).
   final bool isInitializing;
   final bool isOnboarded;
@@ -88,6 +90,48 @@ String _mapLoginErrorMessage(String? message) {
 class AuthNotifier extends Notifier<AuthState> {
   final _storage = const FlutterSecureStorage();
 
+  Future<String?> _restoreAccessTokenWithRefresh() async {
+    final refresh = await _storage.read(key: AppConstants.refreshTokenKey);
+    if (refresh == null || refresh.isEmpty) {
+      return null;
+    }
+
+    final baseOptions = BaseOptions(
+      baseUrl: AppConstants.baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {'Content-Type': 'application/json'},
+    );
+    final refreshClient = Dio(baseOptions);
+
+    try {
+      final response = await refreshClient.post<Map<String, dynamic>>(
+        'auth/refresh/',
+        data: {'refresh': refresh},
+      );
+      final access = response.data?['access'] as String?;
+      if (access == null || access.isEmpty) {
+        return null;
+      }
+
+      await _storage.write(key: AppConstants.tokenKey, value: access);
+      final rotatedRefresh = response.data?['refresh'] as String?;
+      if (rotatedRefresh != null && rotatedRefresh.isNotEmpty) {
+        await _storage.write(
+          key: AppConstants.refreshTokenKey,
+          value: rotatedRefresh,
+        );
+      }
+      return access;
+    } on DioException {
+      return null;
+    } catch (_) {
+      return null;
+    } finally {
+      refreshClient.close();
+    }
+  }
+
   void clearError() {
     state = state.copyWith(error: null);
   }
@@ -107,8 +151,11 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       return response.data['exists'] ?? false;
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
-        state = state.copyWith(error: 'El servidor está despertando, por favor intenta de nuevo');
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        state = state.copyWith(
+          error: 'El servidor está despertando, por favor intenta de nuevo',
+        );
       } else {
         state = state.copyWith(error: 'Error de conexión. Revisa tu internet.');
       }
@@ -137,9 +184,12 @@ class AuthNotifier extends Notifier<AuthState> {
 
         final user = response.data['user'];
         final isOnboarded = user != null ? user['is_onboarded'] == true : false;
-        
+
         // Guardar estado de onboarding y datos del usuario localmente
-        await _storage.write(key: AppConstants.onboardedKey, value: isOnboarded.toString());
+        await _storage.write(
+          key: AppConstants.onboardedKey,
+          value: isOnboarded.toString(),
+        );
         if (user != null) {
           await _storage.write(key: 'user_data', value: jsonEncode(user));
         }
@@ -236,7 +286,12 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<void> register(String username, String email, String password, {Map<String, dynamic>? onboardingData}) async {
+  Future<void> register(
+    String username,
+    String email,
+    String password, {
+    Map<String, dynamic>? onboardingData,
+  }) async {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
@@ -265,10 +320,15 @@ class AuthNotifier extends Notifier<AuthState> {
           );
 
           final user = tokens['user'];
-          final isOnboarded = user != null ? user['is_onboarded'] == true : false;
-          
+          final isOnboarded = user != null
+              ? user['is_onboarded'] == true
+              : false;
+
           // Guardar estado de onboarding y datos del usuario localmente
-          await _storage.write(key: AppConstants.onboardedKey, value: isOnboarded.toString());
+          await _storage.write(
+            key: AppConstants.onboardedKey,
+            value: isOnboarded.toString(),
+          );
           if (user != null) {
             await _storage.write(key: 'user_data', value: jsonEncode(user));
           }
@@ -333,14 +393,15 @@ class AuthNotifier extends Notifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
 
     final googleSignIn = gsi.GoogleSignIn(
-      serverClientId: '945196821861-6u6hcooaoq5h3s5tv4k2t3r9osa20aa1.apps.googleusercontent.com',
+      serverClientId:
+          '945196821861-6u6hcooaoq5h3s5tv4k2t3r9osa20aa1.apps.googleusercontent.com',
       scopes: ['email', 'profile'],
     );
 
     try {
       print('🚀 Iniciando loginWithGoogle...');
       state = state.copyWith(isLoading: true, error: null);
-      
+
       try {
         print('⏳ Intentando signOut previo...');
         await googleSignIn.signOut();
@@ -350,33 +411,39 @@ class AuthNotifier extends Notifier<AuthState> {
 
       print('🔑 Abriendo selector de cuentas de Google...');
       final gsi.GoogleSignInAccount? account = await googleSignIn.signIn();
-      
+
       if (account == null) {
         print('❌ Usuario canceló la selección de cuenta');
         state = state.copyWith(isLoading: false);
         return;
       }
-      
+
       print('✅ Cuenta seleccionada: ${account.email}');
       final authentication = await account.authentication;
       final idToken = authentication.idToken;
       print('🎫 Token de Google obtenido: ${idToken != null ? 'SÍ' : 'NO'}');
 
       if (idToken == null) {
-        state = state.copyWith(isLoading: false, error: 'No se pudo obtener el token de Google');
+        state = state.copyWith(
+          isLoading: false,
+          error: 'No se pudo obtener el token de Google',
+        );
         return;
       }
-      
-      print('📡 Enviando token al servidor: ${AppConstants.baseUrl}auth/social/google/');
-      final response = await apiClient.post(
-        'auth/social/google/', 
-        data: {
-          'access_token': idToken, 
-          'code': '',
-        },
-      ).timeout(const Duration(seconds: 15));
 
-      print('📥 Respuesta del servidor recibida. Status: ${response.statusCode}');
+      print(
+        '📡 Enviando token al servidor: ${AppConstants.baseUrl}auth/social/google/',
+      );
+      final response = await apiClient
+          .post(
+            'auth/social/google/',
+            data: {'access_token': idToken, 'code': ''},
+          )
+          .timeout(const Duration(seconds: 15));
+
+      print(
+        '📥 Respuesta del servidor recibida. Status: ${response.statusCode}',
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final access = response.data['access'];
@@ -387,13 +454,16 @@ class AuthNotifier extends Notifier<AuthState> {
 
         final user = response.data['user'];
         final isOnboarded = user != null ? user['is_onboarded'] == true : false;
-        
+
         // Guardar estado de onboarding y datos locales
-        await _storage.write(key: AppConstants.onboardedKey, value: isOnboarded.toString());
+        await _storage.write(
+          key: AppConstants.onboardedKey,
+          value: isOnboarded.toString(),
+        );
         if (user != null) {
           await _storage.write(key: 'user_data', value: jsonEncode(user));
         }
-        
+
         print('🎊 Login exitoso! Onboarded: $isOnboarded');
 
         state = state.copyWith(
@@ -405,7 +475,7 @@ class AuthNotifier extends Notifier<AuthState> {
       }
     } on DioException catch (e) {
       print('🔥 Error en la petición API: ${e.response?.statusCode}');
-      
+
       String message = 'Error con el servidor de Google';
       if (e.response?.data != null && e.response?.data is Map) {
         final data = e.response!.data as Map;
@@ -422,11 +492,14 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<void> updateProfile({Map<String, dynamic>? data, String? imagePath}) async {
+  Future<void> updateProfile({
+    Map<String, dynamic>? data,
+    String? imagePath,
+  }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       dynamic sendData;
-      
+
       if (imagePath != null) {
         final formData = FormData.fromMap({
           if (data != null) ...data,
@@ -442,17 +515,20 @@ class AuthNotifier extends Notifier<AuthState> {
       }
 
       // Usamos PUT en lugar de PATCH si hay imagen, ya que es más robusto con Multipart
-      final response = await (imagePath != null 
-        ? apiClient.post('auth/profile/update/', data: sendData) // Usamos POST como alternativa si PATCH falla
-        : apiClient.patch('auth/profile/update/', data: sendData));
+      final response = await (imagePath != null
+          ? apiClient.post(
+              'auth/profile/update/',
+              data: sendData,
+            ) // Usamos POST como alternativa si PATCH falla
+          : apiClient.patch('auth/profile/update/', data: sendData));
 
       if (response.statusCode == 200) {
         final updatedUser = response.data;
         await _storage.write(key: AppConstants.onboardedKey, value: 'true');
         await _storage.write(key: 'user_data', value: jsonEncode(updatedUser));
         state = state.copyWith(
-          isOnboarded: true, 
-          isLoading: false, 
+          isOnboarded: true,
+          isLoading: false,
           user: updatedUser,
           isAuthenticated: true,
         );
@@ -461,7 +537,10 @@ class AuthNotifier extends Notifier<AuthState> {
       final msg = e.response?.data?.toString() ?? 'Error al actualizar perfil';
       state = state.copyWith(isLoading: false, error: msg);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Fallo al guardar perfil');
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Fallo al guardar perfil',
+      );
     }
   }
 
@@ -491,12 +570,22 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> checkAuth() async {
     try {
-      final token = await _storage.read(key: AppConstants.tokenKey);
+      var token = await _storage.read(key: AppConstants.tokenKey);
       final localUserData = await _storage.read(key: 'user_data');
-      
+      final refreshToken = await _storage.read(
+        key: AppConstants.refreshTokenKey,
+      );
+
       print('🔍 Verificando sesión... Token: ${token != null ? 'SÍ' : 'NO'}');
 
-      if (token != null) {
+      // Si el access no existe pero el refresh sigue vigente, intentamos recuperar sesión.
+      if ((token == null || token.isEmpty) &&
+          refreshToken != null &&
+          refreshToken.isNotEmpty) {
+        token = await _restoreAccessTokenWithRefresh();
+      }
+
+      if (token != null && token.isNotEmpty) {
         // CARGA RÁPIDA: Si tenemos datos locales, los ponemos ya mismo
         if (localUserData != null) {
           try {
