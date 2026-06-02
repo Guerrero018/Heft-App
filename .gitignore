@@ -1,6 +1,7 @@
 # Root ignore
 .DS_Store
 *.log
+Lo que falta por implementar.txt
 
 # Frontend (Flutter)
 frontend/.dart_tool/

@@ -12,9 +12,9 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
     required Dio dio,
     required Dio refreshDio,
     FlutterSecureStorage? storage,
-  })  : _dio = dio,
-        _refreshDio = refreshDio,
-        _storage = storage ?? const FlutterSecureStorage();
+  }) : _dio = dio,
+       _refreshDio = refreshDio,
+       _storage = storage ?? const FlutterSecureStorage();
 
   final Dio _dio;
   final Dio _refreshDio;
@@ -30,6 +30,10 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
         path.contains('/auth/check-email') ||
         path.contains('/auth/password-reset') ||
         path.contains('/auth/social/');
+  }
+
+  static bool _alreadyRetried(RequestOptions options) {
+    return options.extra['__auth_retry_done'] == true;
   }
 
   Future<String?> _getNewAccessToken() async {
@@ -107,6 +111,11 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
       return handler.next(err);
     }
 
+    if (_alreadyRetried(err.requestOptions)) {
+      await _clearSession();
+      return handler.next(err);
+    }
+
     final newAccess = await _getNewAccessToken();
     if (newAccess == null) {
       await _clearSession();
@@ -115,6 +124,7 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
 
     try {
       final retryOptions = err.requestOptions;
+      retryOptions.extra['__auth_retry_done'] = true;
       retryOptions.headers['Authorization'] = 'Bearer $newAccess';
       final response = await _dio.fetch(retryOptions);
       return handler.resolve(response);
