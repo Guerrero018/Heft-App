@@ -54,6 +54,9 @@ INSTALLED_APPS = [
     "apps.routines",
     "apps.users",
     "apps.statistics",
+    "apps.notifications",
+    # Celery Beat scheduler
+    "django_celery_beat",
     # Django Allauth (Social Auth)
     "django.contrib.sites",
     "allauth",
@@ -241,3 +244,51 @@ DEFAULT_FROM_EMAIL = os.getenv(
     "DEFAULT_FROM_EMAIL",
     EMAIL_HOST_USER or "no-reply@heft.app",
 )
+
+# ---------------------------------------------------------------------------
+# Celery
+# ---------------------------------------------------------------------------
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+# Default periodic tasks (can also be managed via Django admin with django-celery-beat)
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    # Workout reminders — run every hour to match each user's configured hour
+    "workout-reminders-hourly": {
+        "task": "notifications.send_workout_reminders",
+        "schedule": crontab(minute=0),
+    },
+    # Body progress — run every hour
+    "body-progress-reminders-hourly": {
+        "task": "notifications.send_body_progress_reminders",
+        "schedule": crontab(minute=5),
+    },
+    # Weekly summary — run every hour
+    "weekly-summaries-hourly": {
+        "task": "notifications.send_weekly_summaries",
+        "schedule": crontab(minute=10),
+    },
+    # Inactivity alerts — run daily at 10:00 UTC
+    "inactivity-alerts-daily": {
+        "task": "notifications.send_inactivity_alerts",
+        "schedule": crontab(hour=10, minute=0),
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Firebase
+# ---------------------------------------------------------------------------
+
+# Full Firebase Admin service-account JSON as a single env var (base64 or raw JSON string)
+FIREBASE_CREDENTIALS_JSON = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
+
+# Set to "false" in non-production environments to skip real push sends
+NOTIFICATIONS_ENABLED = os.getenv("NOTIFICATIONS_ENABLED", "true").lower() == "true"

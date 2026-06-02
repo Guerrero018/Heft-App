@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart' as gsi;
 import '../../core/api/api_client.dart';
 import '../../core/api/constants.dart';
 import '../../core/auth/session_manager.dart';
+import '../../core/notifications/notification_service.dart';
 
 String extractApiErrorMessage(
   dynamic data, {
@@ -98,8 +99,8 @@ class AuthNotifier extends Notifier<AuthState> {
 
     final baseOptions = BaseOptions(
       baseUrl: AppConstants.baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 60),
       headers: {'Content-Type': 'application/json'},
     );
     final refreshClient = Dio(baseOptions);
@@ -176,8 +177,16 @@ class AuthNotifier extends Notifier<AuthState> {
       );
 
       if (response.statusCode == 200) {
-        final access = response.data['access'];
-        final refresh = response.data['refresh'];
+        final access = response.data['access'] as String?;
+        final refresh = response.data['refresh'] as String?;
+
+        if (access == null || refresh == null) {
+          state = state.copyWith(
+            isLoading: false,
+            error: 'Respuesta inesperada del servidor.',
+          );
+          return;
+        }
 
         await _storage.write(key: AppConstants.tokenKey, value: access);
         await _storage.write(key: AppConstants.refreshTokenKey, value: refresh);
@@ -185,7 +194,6 @@ class AuthNotifier extends Notifier<AuthState> {
         final user = response.data['user'];
         final isOnboarded = user != null ? user['is_onboarded'] == true : false;
 
-        // Guardar estado de onboarding y datos del usuario localmente
         await _storage.write(
           key: AppConstants.onboardedKey,
           value: isOnboarded.toString(),
@@ -200,8 +208,29 @@ class AuthNotifier extends Notifier<AuthState> {
           isOnboarded: isOnboarded,
           user: user,
         );
+
+        // Register FCM token (fire-and-forget)
+        final fcmToken = NotificationService.instance.currentToken;
+        if (fcmToken != null) {
+          NotificationService.instance.registerTokenWithBackend(fcmToken);
+        }
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Error inesperado del servidor (${response.statusCode}).',
+        );
       }
     } on DioException catch (e) {
+      final isTimeout = e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout;
+      if (isTimeout) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'El servidor tardó demasiado. Inténtalo de nuevo en unos segundos.',
+        );
+        return;
+      }
       final raw = e.response?.data['detail'] ?? e.response?.data['error'];
       final message = _mapLoginErrorMessage(raw?.toString());
       state = state.copyWith(isLoading: false, error: message);
@@ -368,6 +397,9 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Fire-and-forget: deactivate FCM token without blocking the logout flow
+    NotificationService.instance.deactivateToken();
+
     try {
       // Intentar cerrar sesión de Google si existe
       final googleSignIn = gsi.GoogleSignIn();
@@ -403,10 +435,9 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(isLoading: true, error: null);
 
       try {
-        print('⏳ Intentando signOut previo...');
-        await googleSignIn.signOut();
+        await googleSignIn.signOut().timeout(const Duration(seconds: 5));
       } catch (e) {
-        print('ℹ️ Error al cerrar sesión previa (puede ignorarse): $e');
+        // Ignorable: previous session may not exist or Play Services slow
       }
 
       print('🔑 Abriendo selector de cuentas de Google...');
@@ -434,20 +465,26 @@ class AuthNotifier extends Notifier<AuthState> {
       print(
         '📡 Enviando token al servidor: ${AppConstants.baseUrl}auth/social/google/',
       );
-      final response = await apiClient
-          .post(
-            'auth/social/google/',
-            data: {'access_token': idToken, 'code': ''},
-          )
-          .timeout(const Duration(seconds: 15));
+      final response = await apiClient.post(
+        'auth/social/google/',
+        data: {'access_token': idToken, 'code': ''},
+      );
 
       print(
         '📥 Respuesta del servidor recibida. Status: ${response.statusCode}',
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final access = response.data['access'];
-        final refresh = response.data['refresh'];
+        final access = response.data['access'] as String?;
+        final refresh = response.data['refresh'] as String?;
+
+        if (access == null || refresh == null) {
+          state = state.copyWith(
+            isLoading: false,
+            error: 'Respuesta inesperada del servidor. Inténtalo de nuevo.',
+          );
+          return;
+        }
 
         await _storage.write(key: AppConstants.tokenKey, value: access);
         await _storage.write(key: AppConstants.refreshTokenKey, value: refresh);
@@ -455,7 +492,6 @@ class AuthNotifier extends Notifier<AuthState> {
         final user = response.data['user'];
         final isOnboarded = user != null ? user['is_onboarded'] == true : false;
 
-        // Guardar estado de onboarding y datos locales
         await _storage.write(
           key: AppConstants.onboardedKey,
           value: isOnboarded.toString(),
@@ -464,30 +500,47 @@ class AuthNotifier extends Notifier<AuthState> {
           await _storage.write(key: 'user_data', value: jsonEncode(user));
         }
 
-        print('🎊 Login exitoso! Onboarded: $isOnboarded');
-
         state = state.copyWith(
           isLoading: false,
           isAuthenticated: true,
           isOnboarded: isOnboarded,
           user: user,
         );
+
+        // Register FCM token (fire-and-forget, only if Firebase is configured)
+        final fcmToken = NotificationService.instance.currentToken;
+        if (fcmToken != null) {
+          NotificationService.instance.registerTokenWithBackend(fcmToken);
+        }
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Error inesperado del servidor (${response.statusCode}).',
+        );
       }
     } on DioException catch (e) {
-      print('🔥 Error en la petición API: ${e.response?.statusCode}');
+      final isTimeout = e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout;
+
+      if (isTimeout) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'El servidor tardó en responder. Inténtalo de nuevo en unos segundos.',
+        );
+        return;
+      }
 
       String message = 'Error con el servidor de Google';
       if (e.response?.data != null && e.response?.data is Map) {
         final data = e.response!.data as Map;
         message = data['detail'] ?? data['error'] ?? message;
       } else if (e.response?.data != null && e.response?.data is String) {
-        // El servidor devolvió una página HTML de error (probablemente error 500)
-        message = 'Error del servidor (HTML): ${e.response?.statusCode}';
+        message = 'Error del servidor: ${e.response?.statusCode}';
       }
 
       state = state.copyWith(isLoading: false, error: message);
     } catch (e) {
-      print('💥 Error inesperado: $e');
       state = state.copyWith(isLoading: false, error: 'Error inesperado: $e');
     }
   }
@@ -532,6 +585,8 @@ class AuthNotifier extends Notifier<AuthState> {
           user: updatedUser,
           isAuthenticated: true,
         );
+      } else {
+        state = state.copyWith(isLoading: false);
       }
     } on DioException catch (e) {
       final msg = e.response?.data?.toString() ?? 'Error al actualizar perfil';
@@ -601,6 +656,12 @@ class AuthNotifier extends Notifier<AuthState> {
 
         await syncProfile();
         state = state.copyWith(isInitializing: false);
+
+        // Re-register FCM token in case it rotated since last session
+        final fcmToken = NotificationService.instance.currentToken;
+        if (fcmToken != null) {
+          await NotificationService.instance.registerTokenWithBackend(fcmToken);
+        }
       } else {
         state = state.copyWith(isInitializing: false, isAuthenticated: false);
       }
