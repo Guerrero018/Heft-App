@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 from rest_framework import serializers
 
 from .models import DeviceToken, UserNotificationPreferences
@@ -53,6 +55,17 @@ class UserNotificationPreferencesSerializer(serializers.ModelSerializer):
         if not 1 <= value <= 30:
             raise serializers.ValidationError("El umbral debe estar entre 1 y 30 días.")
         return value
+
+    def validate_timezone(self, value):
+        if not value or not str(value).strip():
+            return "Europe/Madrid"
+        try:
+            ZoneInfo(str(value).strip())
+        except Exception as exc:
+            raise serializers.ValidationError(
+                "Zona horaria IANA no válida (ej. Europe/Madrid, America/Mexico_City)."
+            ) from exc
+        return str(value).strip()
 
 
 class DeviceTokenSerializer(serializers.ModelSerializer):

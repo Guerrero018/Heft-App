@@ -10,11 +10,27 @@ La app usa **Firebase Cloud Messaging (FCM)**. En Android hace falta:
 
 ## Paso 1 — Firebase Console
 
+### Android
+
 1. Abre [Firebase Console](https://console.firebase.google.com).
 2. Usa el mismo proyecto que Google Sign-In (número de proyecto **945196821861**) o crea uno nuevo.
 3. **Añadir app** → **Android**
 4. Package name: `com.heft.frontend`
 5. Descarga **`google-services.json`**
+
+### iOS (push en iPhone)
+
+1. En el mismo proyecto Firebase: **Añadir app** → **iOS**
+2. Bundle ID: `com.heft.frontend`
+3. Descarga **`GoogleService-Info.plist`**
+4. Cópialo en:
+
+   ```
+   frontend/ios/Runner/GoogleService-Info.plist
+   ```
+
+5. Abre `frontend/ios/Runner.xcworkspace` en Xcode → target **Runner** → **Signing & Capabilities** → **+ Capability** → **Push Notifications** (y **Background Modes** → Remote notifications si no aparece solo; el `Info.plist` ya incluye `remote-notification`).
+6. Sube la **APNs key** (.p8) en Firebase → Project settings → Cloud Messaging → Apple app configuration.
 
 ## Paso 2 — Colocar el archivo
 
@@ -61,6 +77,23 @@ flutter pub get
 flutter run
 ```
 
+## Builds release (API de producción)
+
+En **release** la app carga `frontend/.env.production` (no `.env`):
+
+```env
+API_BASE_URL=https://heft-backend-ywi0.onrender.com/api/
+```
+
+Desde la raíz del repo:
+
+```powershell
+.\scripts\build_release.ps1           # APK release
+.\scripts\build_release.ps1 -AppBundle  # AAB Play Store
+```
+
+O manualmente: `cd frontend` → `flutter build apk --release`.
+
 ## Paso 5 — Activar permisos en el móvil
 
 En la app: **Perfil → Ajustes → Notificaciones → Activar permisos**.
@@ -104,6 +137,9 @@ Descarga la clave en Firebase → Project settings → Service accounts → Gene
 | Archivo | Descripción |
 |---------|-------------|
 | `frontend/android/app/google-services.json` | **No incluido** — lo añades tú (por proyecto) |
+| `frontend/ios/Runner/GoogleService-Info.plist` | **No incluido** — iOS (mismo proyecto Firebase) |
+| `frontend/.env.production` | API Render en builds `--release` |
 | `frontend/lib/firebase_options.dart` | Generado por `tool/generate_firebase_options.dart` |
+| `scripts/build_release.ps1` | APK / App Bundle release |
 | `frontend/tool/generate_firebase_options.dart` | Script generador |
 | `scripts/setup_firebase.ps1` | Script de ayuda Windows |

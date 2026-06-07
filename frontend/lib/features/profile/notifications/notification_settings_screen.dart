@@ -61,6 +61,8 @@ class _NotificationSettingsScreenState
 
     if (status == AuthorizationStatus.authorized ||
         status == AuthorizationStatus.provisional) {
+      await NotificationService.instance.syncTokenWithBackend();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Permisos de notificación activados')),
       );
@@ -115,6 +117,19 @@ class _NotificationSettingsScreenState
         else if (_permissionStatus != null &&
             _permissionStatus != AuthorizationStatus.authorized)
           _PermissionBanner(onRequest: _requestPermission),
+
+        if (prefs.allEnabled)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Las horas usan tu zona horaria (${prefs.timezone}) y se envían a la hora en punto.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 13,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
 
         // Master switch
         _SectionCard(
@@ -529,7 +544,7 @@ class _TimePickerRow extends StatelessWidget {
               child: child!,
             ),
           );
-          if (picked != null) onPicked(picked.hour, picked.minute);
+          if (picked != null) onPicked(picked.hour, 0);
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

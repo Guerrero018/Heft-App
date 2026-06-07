@@ -3,7 +3,6 @@
 import logging
 
 from django.conf import settings
-from django.utils import timezone
 
 from .tasks import (
     send_body_progress_reminders,
@@ -13,9 +12,6 @@ from .tasks import (
 )
 
 logger = logging.getLogger(__name__)
-
-# Misma hora que CELERY_BEAT_SCHEDULE["inactivity-alerts-daily"] (UTC)
-INACTIVITY_CRON_HOUR_UTC = 10
 
 
 def run_scheduled_notification_jobs() -> dict[str, int]:
@@ -34,11 +30,8 @@ def run_scheduled_notification_jobs() -> dict[str, int]:
         "workout_reminder": send_workout_reminders(),
         "body_progress": send_body_progress_reminders(),
         "weekly_summary": send_weekly_summaries(),
-        "inactivity": 0,
+        "inactivity": send_inactivity_alerts(),
     }
-
-    if timezone.now().hour == INACTIVITY_CRON_HOUR_UTC:
-        results["inactivity"] = send_inactivity_alerts()
 
     logger.info("Cron notifications finished: %s", results)
     return results

@@ -1,4 +1,4 @@
-# Configura Firebase para Heft (Android FCM)
+# Configura Firebase para Heft (Android + iOS FCM)
 # Uso: .\scripts\setup_firebase.ps1
 # Opcional: .\scripts\setup_firebase.ps1 -ProjectId "tu-proyecto-firebase"
 
@@ -10,6 +10,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $frontend = Join-Path $root "frontend"
 $jsonPath = Join-Path $frontend "android\app\google-services.json"
+$iosPlistPath = Join-Path $frontend "ios\Runner\GoogleService-Info.plist"
 
 Set-Location $frontend
 
@@ -31,6 +32,14 @@ if (-not (Test-Path $jsonPath)) {
         }
     }
     exit 1
+}
+
+if (-not (Test-Path $iosPlistPath)) {
+    Write-Host ""
+    Write-Host "Opcional (iOS): añade app iOS en Firebase (bundle com.heft.frontend)" -ForegroundColor Yellow
+    Write-Host "  Descarga GoogleService-Info.plist en:" -ForegroundColor Yellow
+    Write-Host "  $iosPlistPath" -ForegroundColor Yellow
+    Write-Host "  En Xcode: Runner → Signing & Capabilities → + Push Notifications" -ForegroundColor Yellow
 }
 
 Write-Host "Generando lib/firebase_options.dart ..."
