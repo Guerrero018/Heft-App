@@ -62,7 +62,7 @@ class UserNotificationPreferences(models.Model):
     inactivity_threshold_days = models.PositiveSmallIntegerField(default=3)
 
     # Timezone string, e.g. "Europe/Madrid"
-    timezone = models.CharField(max_length=64, default="UTC")
+    timezone = models.CharField(max_length=64, default="Europe/Madrid")
 
     updated_at = models.DateTimeField(auto_now=True)
 

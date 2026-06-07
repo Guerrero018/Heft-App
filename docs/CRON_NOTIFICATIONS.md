@@ -71,12 +71,33 @@ Respuesta OK:
 
 ## 4. Qué ejecuta cada llamada
 
-En cada hora (UTC del servidor):
+El cron externo llama **cada hora** (hora del servidor, irrelevante para el usuario). En cada ejecución el backend comprueba, **por usuario**, su zona IANA (`timezone` en preferencias, sincronizada desde la app):
 
-- Recordatorios de **entrenamiento** (hora + día configurados)
-- Recordatorios de **medidas corporales**
-- **Resumen semanal**
-- Alerta de **inactividad** solo a las **10:00 UTC** (igual que Celery Beat)
+- Recordatorios de **entrenamiento** (hora + días locales)
+- Recordatorios de **medidas corporales** (día y hora locales)
+- **Resumen semanal** (día y hora locales)
+- Alerta de **inactividad** a las **10:00 hora local** de cada usuario
+
+La app envía la zona del dispositivo (p. ej. `Europe/Madrid`) al abrir o guardar preferencias de notificaciones.
+
+## 4.1 Rotar `CRON_SECRET` (recomendado si se filtró)
+
+1. Genera un valor nuevo (PowerShell):
+
+   ```powershell
+   [guid]::NewGuid().ToString() + [guid]::NewGuid().ToString()
+   ```
+
+2. En **Render** → servicio web → Environment → actualiza `CRON_SECRET` y guarda (redeploy).
+3. En **cron-job.org** → tu job → Headers → `Authorization` = `Bearer NUEVO_SECRETO`.
+4. Prueba:
+
+   ```powershell
+   curl.exe -X POST "https://TU-SERVICIO.onrender.com/api/internal/cron/notifications/" `
+     -H "Authorization: Bearer NUEVO_SECRETO"
+   ```
+
+5. Borra el secreto antiguo de capturas, chats y notas.
 
 ## 5. Probar a mano
 

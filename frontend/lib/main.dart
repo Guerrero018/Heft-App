@@ -2,6 +2,7 @@
 // ignore_for_file: dead_code
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
@@ -17,7 +18,11 @@ import 'package:intl/date_symbol_data_local.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('es', null);
-  await dotenv.load(fileName: ".env");
+  final envFile = kReleaseMode ? '.env.production' : '.env';
+  await dotenv.load(fileName: envFile);
+  if (kDebugMode) {
+    debugPrint('Loaded env: $envFile → ${dotenv.env['API_BASE_URL']}');
+  }
   await _initFirebaseAndNotifications();
   runApp(const ProviderScope(child: HeftApp()));
 }

@@ -44,7 +44,7 @@ class NotificationPreferences {
     this.weeklySummaryMinute = 0,
     this.inactivityEnabled = true,
     this.inactivityThresholdDays = 3,
-    this.timezone = 'UTC',
+    this.timezone = 'Europe/Madrid',
   });
 
   factory NotificationPreferences.fromJson(Map<String, dynamic> json) {
@@ -65,7 +65,7 @@ class NotificationPreferences {
       weeklySummaryMinute: json['weekly_summary_minute'] as int? ?? 0,
       inactivityEnabled: json['inactivity_enabled'] as bool? ?? true,
       inactivityThresholdDays: json['inactivity_threshold_days'] as int? ?? 3,
-      timezone: json['timezone'] as String? ?? 'UTC',
+      timezone: json['timezone'] as String? ?? 'Europe/Madrid',
     );
   }
 

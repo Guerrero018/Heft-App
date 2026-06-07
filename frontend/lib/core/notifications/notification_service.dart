@@ -174,7 +174,7 @@ class NotificationService {
 
   /// Registers the FCM token with the Heft backend after login.
   Future<void> registerTokenWithBackend(String token) async {
-    if (!_ready) return;
+    if (!isFirebaseAvailable) return;
     try {
       final platform = Platform.isAndroid ? 'android' : 'ios';
       await apiClient.post(
@@ -183,6 +183,21 @@ class NotificationService {
       );
     } on DioException catch (e) {
       if (kDebugMode) debugPrint('Failed to register FCM token: $e');
+    }
+  }
+
+  /// Obtiene el token actual y lo registra en el backend (p. ej. tras dar permisos).
+  Future<void> syncTokenWithBackend() async {
+    if (!isFirebaseAvailable) return;
+    final messaging = _messaging;
+    if (messaging == null) return;
+    try {
+      _currentToken = await messaging.getToken();
+      if (_currentToken != null) {
+        await registerTokenWithBackend(_currentToken!);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('FCM syncTokenWithBackend error: $e');
     }
   }
 
