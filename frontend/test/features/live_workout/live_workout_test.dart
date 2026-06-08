@@ -2,12 +2,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend/features/live_workout/domain/live_workout_provider.dart';
 import 'package:frontend/features/live_workout/domain/live_workout_state.dart';
 import 'package:frontend/core/api/api_client.dart';
+import 'package:frontend/core/offline/connectivity_provider.dart';
+import 'package:frontend/core/offline/offline_storage_service.dart';
 import 'package:frontend/features/routines/domain/routine_model.dart';
 
 class MockDio extends Mock implements Dio {}
+
+class OnlineConnectivity extends ConnectivityNotifier {
+  @override
+  ConnectivityState build() =>
+      const ConnectivityState(hasNetworkInterface: true, isOnline: true);
+}
 
 void main() {
   late MockDio mockDio;
@@ -17,11 +26,17 @@ void main() {
     registerFallbackValue(RequestOptions(path: ''));
   });
 
-  setUp(() {
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = OfflineStorageService(prefs);
+
     mockDio = MockDio();
     container = ProviderContainer(
       overrides: [
         apiClientProvider.overrideWithValue(mockDio),
+        connectivityProvider.overrideWith(OnlineConnectivity.new),
+        offlineStorageServiceProvider.overrideWith((ref) async => storage),
       ],
     );
 
@@ -168,7 +183,8 @@ void main() {
           requestOptions: RequestOptions(path: ''),
         ));
         
-    await notifier.finishWorkout();
+    final result = await notifier.finishWorkout();
+    expect(result, FinishWorkoutResult.success);
     
     // Verify that only 1 set was sent to the server
     verify(() => mockDio.post(

@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/offline/connectivity_provider.dart';
+import '../../core/offline/offline_sync_provider.dart';
+import '../../core/offline/widgets/offline_status_banner.dart';
 import '../../core/utils/label_translations.dart';
 import '../auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
@@ -36,9 +39,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final liveWorkoutState = ref.watch(liveWorkoutProvider);
+    ref.watch(connectivityProvider);
+    ref.watch(offlineSyncProvider);
 
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: Column(
+        children: [
+          const OfflineStatusBanner(),
+          Expanded(child: IndexedStack(index: _currentIndex, children: _pages)),
+        ],
+      ),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

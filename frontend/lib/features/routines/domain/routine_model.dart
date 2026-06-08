@@ -24,6 +24,14 @@ class Routine {
           .toList(),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'description': description,
+        'is_active': isActive,
+        'exercises': exercises.map((e) => e.toJson()).toList(),
+      };
 }
 
 class RoutineExercise {
@@ -65,4 +73,17 @@ class RoutineExercise {
       targetWeight: (json['target_weight'] ?? 0.0).toDouble(),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'exercise': exerciseId,
+        'exercise_name': exerciseName,
+        'muscle_group': muscleGroup,
+        'external_id': externalId,
+        'gif_url': gifUrl,
+        'order': order,
+        'target_sets': targetSets,
+        'target_reps': targetReps,
+        'target_weight': targetWeight,
+      };
 }
