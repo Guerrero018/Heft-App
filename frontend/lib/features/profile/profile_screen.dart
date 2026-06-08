@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_provider.dart';
 import '../body_progress/data/body_progress_provider.dart';
+import 'data/privacy_preferences_provider.dart';
 import 'edit_profile_screen.dart';
 import 'widgets/profile_body_progress_section.dart';
 import 'widgets/profile_settings_menu.dart';
@@ -29,6 +30,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
+    final privacy = ref.watch(privacyPreferencesProvider).prefs;
 
     if (user == null && authState.isInitializing) {
       return const Scaffold(
@@ -56,9 +58,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _ProfileHeader(user: user),
-                    const SizedBox(height: 24),
-                    _StatsRow(user: user),
+                    _ProfileHeader(
+                      user: user,
+                      showEmail: privacy.showEmailOnProfile,
+                    ),
+                    if (privacy.showStatsOnProfile) ...[
+                      const SizedBox(height: 24),
+                      _StatsRow(user: user),
+                    ] else
+                      const SizedBox(height: 24),
                     const SizedBox(height: 28),
                     _AchievementsSection(),
                     const SizedBox(height: 28),
@@ -89,8 +97,12 @@ class _ProfileScrollBehavior extends ScrollBehavior {
 
 class _ProfileHeader extends StatelessWidget {
   final Map<String, dynamic>? user;
+  final bool showEmail;
 
-  const _ProfileHeader({required this.user});
+  const _ProfileHeader({
+    required this.user,
+    this.showEmail = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -151,10 +163,11 @@ class _ProfileHeader extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        Text(
-          user?['email'] ?? '',
-          style: const TextStyle(color: AppTheme.hintColor, fontSize: 13),
-        ),
+        if (showEmail)
+          Text(
+            user?['email'] ?? '',
+            style: const TextStyle(color: AppTheme.hintColor, fontSize: 13),
+          ),
       ],
     );
   }
