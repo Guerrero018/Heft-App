@@ -172,16 +172,28 @@ class LiveWorkoutScreen extends ConsumerWidget {
   }
 
   Future<void> _finishWorkout(BuildContext context, WidgetRef ref) async {
-    final saved = await ref.read(liveWorkoutProvider.notifier).finishWorkout();
+    final result = await ref.read(liveWorkoutProvider.notifier).finishWorkout();
     if (!context.mounted) return;
-    if (saved) {
-      AppMessage.showSuccess(
-        context,
-        'Entrenamiento guardado correctamente',
-      );
-      Navigator.of(context).pop();
-    } else {
-      AppMessage.showError(context, 'No se pudo guardar el entrenamiento');
+    switch (result) {
+      case FinishWorkoutResult.success:
+        AppMessage.showSuccess(
+          context,
+          'Entrenamiento guardado correctamente',
+        );
+        Navigator.of(context).pop();
+      case FinishWorkoutResult.savedOffline:
+        AppMessage.showSuccess(
+          context,
+          'Guardado en el dispositivo. Se sincronizará cuando vuelva la conexión.',
+        );
+        Navigator.of(context).pop();
+      case FinishWorkoutResult.noCompletedSets:
+        AppMessage.showError(
+          context,
+          'Marca al menos una serie como completada antes de finalizar',
+        );
+      case FinishWorkoutResult.failed:
+        AppMessage.showError(context, 'No se pudo guardar el entrenamiento');
     }
   }
 
