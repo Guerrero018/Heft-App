@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/api/api_client.dart';
-import '../domain/routine_model.dart';
 import 'package:dio/dio.dart';
+
+import '../../../core/api/api_client.dart';
+import '../../achievements/data/achievements_provider.dart';
+import '../domain/routine_model.dart';
 
 class RoutineState {
   final List<Routine> routines;
@@ -67,6 +69,10 @@ class RoutineNotifier extends Notifier<RoutineState> {
 
   Future<void> createRoutineWithExercises(String name, String description, List<Map<String, dynamic>> exercises) async {
     state = state.copyWith(isLoading: true);
+    final unlockedBaseline = {
+      for (final a in ref.read(achievementsProvider).achievements)
+        if (a.isUnlocked) a.id,
+    };
     try {
       await apiClient.post('routines/', data: {
         'name': name,
@@ -74,6 +80,9 @@ class RoutineNotifier extends Notifier<RoutineState> {
         'exercises': exercises,
       });
       await fetchRoutines();
+      await ref.read(achievementsProvider.notifier).sync(
+            unlockedBaseline: unlockedBaseline,
+          );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: 'Error al crear la rutina: $e');
       rethrow;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_message.dart';
+import '../achievements/data/achievements_provider.dart';
 import '../auth/auth_provider.dart';
 import '../home/home_screen.dart';
 
@@ -53,6 +54,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (!mounted) return;
 
     final error = ref.read(authProvider).error;
+    if (error == null) {
+      await ref.read(achievementsProvider.notifier).sync(unlockedBaseline: {});
+    }
+
+    if (!mounted) return;
+
     if (error != null) {
       AppMessage.showError(context, error);
       return;

@@ -1,7 +1,9 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/api/api_client.dart';
-import '../domain/exercise_model.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/api/api_client.dart';
+import '../../achievements/data/achievements_provider.dart';
+import '../domain/exercise_model.dart';
 
 class ExerciseState {
   final List<Exercise> exercises;
@@ -94,6 +96,10 @@ class ExerciseNotifier extends Notifier<ExerciseState> {
     String? gifUrl,
   }) async {
     state = state.copyWith(isLoading: true);
+    final unlockedBaseline = {
+      for (final a in ref.read(achievementsProvider).achievements)
+        if (a.isUnlocked) a.id,
+    };
     try {
       final response = await apiClient.post(
         'exercises/',
@@ -113,6 +119,9 @@ class ExerciseNotifier extends Notifier<ExerciseState> {
         exercises: [newExercise, ...state.exercises],
         isLoading: false,
       );
+      await ref.read(achievementsProvider.notifier).sync(
+            unlockedBaseline: unlockedBaseline,
+          );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;

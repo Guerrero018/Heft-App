@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.statistics",
     "apps.notifications",
+    "apps.achievements",
     # Celery Beat scheduler
     "django_celery_beat",
     # Django Allauth (Social Auth)
