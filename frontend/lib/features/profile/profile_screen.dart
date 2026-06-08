@@ -25,7 +25,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.initState();
     Future.microtask(() async {
       ref.read(bodyProgressProvider.notifier).loadAll(force: true);
-      await ref.read(achievementsProvider.notifier).sync();
+      await ref.read(achievementsProvider.notifier).refresh(force: true);
     });
   }
 

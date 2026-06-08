@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -24,11 +25,23 @@ class AchievementsNotifier extends Notifier<AchievementsState> {
       final result =
           await ref.read(achievementsApiServiceProvider).fetchUserAchievements();
       state = result;
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: friendlyAchievementsError(e),
+      );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: e.toString(),
+        error: 'No se pudieron cargar los logros.',
       );
+    }
+  }
+
+  Future<void> refresh({bool force = false}) async {
+    await load(force: force);
+    if (state.error == null || state.achievements.isNotEmpty) {
+      await sync();
     }
   }
 
@@ -55,9 +68,19 @@ class AchievementsNotifier extends Notifier<AchievementsState> {
         ...clientNewly,
       }.toList();
 
-      state = result.copyWith(pendingCelebrations: combined);
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = result.copyWith(pendingCelebrations: combined, clearError: true);
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: state.achievements.isEmpty ? friendlyAchievementsError(e) : null,
+      );
+    } catch (_) {
+      state = state.copyWith(
+        isLoading: false,
+        error: state.achievements.isEmpty
+            ? 'No se pudieron cargar los logros.'
+            : null,
+      );
     }
   }
 

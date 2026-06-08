@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from .storage import achievement_image_upload_to, select_achievement_storage
+
 
 class Achievement(models.Model):
     class Category(models.TextChoices):
@@ -34,10 +36,11 @@ class Achievement(models.Model):
         help_text="Clave para mapear al icono Material en el frontend.",
     )
     image = models.ImageField(
-        upload_to="achievements/",
+        upload_to=achievement_image_upload_to,
+        storage=select_achievement_storage(),
         null=True,
         blank=True,
-        help_text="Ilustración del logro (opcional).",
+        help_text="Ilustración en Supabase Storage (o media local en desarrollo).",
     )
     criteria = models.JSONField(
         default=dict,

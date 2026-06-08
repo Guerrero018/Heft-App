@@ -17,6 +17,22 @@ from apps.workouts.models import WorkoutSession, WorkoutSet
 User = get_user_model()
 
 
+class AchievementStorageTests(APITestCase):
+    def test_achievement_image_upload_to_uses_slug(self):
+        from apps.achievements.storage import achievement_image_upload_to
+
+        class _Stub:
+            slug = "bench_press_gold"
+
+        self.assertEqual(achievement_image_upload_to(_Stub(), "ignored.png"), "bench_press_gold.png")
+
+    def test_supabase_storage_preserves_filename(self):
+        from apps.achievements.storage import SupabaseAchievementStorage
+
+        storage = SupabaseAchievementStorage()
+        self.assertEqual(storage.get_available_name("first_workout.png"), "first_workout.png")
+
+
 class AchievementCatalogTests(APITestCase):
     def test_catalog_has_75_entries(self):
         self.assertEqual(len(achievement_catalog_entries()), 75)

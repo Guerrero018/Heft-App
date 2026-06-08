@@ -75,8 +75,9 @@ class AchievementsVitrineSection extends ConsumerWidget {
             )
           else if (state.error != null && state.achievements.isEmpty)
             _ErrorBanner(
+              message: state.error!,
               onRetry: () =>
-                  ref.read(achievementsProvider.notifier).load(force: true),
+                  ref.read(achievementsProvider.notifier).refresh(force: true),
             )
           else
             _VitrineRow(
@@ -196,9 +197,13 @@ class _VitrineRow extends StatelessWidget {
 }
 
 class _ErrorBanner extends StatelessWidget {
+  final String message;
   final VoidCallback onRetry;
 
-  const _ErrorBanner({required this.onRetry});
+  const _ErrorBanner({
+    required this.message,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -208,17 +213,26 @@ class _ErrorBanner extends StatelessWidget {
         color: AppTheme.cardColor,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline, color: Colors.redAccent, size: 22),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'No se pudieron cargar los logros',
-              style: TextStyle(color: AppTheme.hintColor, fontSize: 13),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(color: AppTheme.hintColor, fontSize: 13),
+                ),
+              ),
+            ],
           ),
-          TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+          ),
         ],
       ),
     );
