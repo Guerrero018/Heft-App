@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/theme/app_theme.dart';
+import 'features/achievements/presentation/widgets/achievement_celebration_host.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/auth/auth_provider.dart';
 import 'features/home/home_screen.dart';
@@ -62,11 +63,13 @@ class HeftApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       title: 'Heft',
       theme: AppTheme.darkTheme,
-      home: authState.isInitializing
-          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-          : authState.isAuthenticated
-              ? const HomeScreen()
-              : const AuthScreen(),
+      home: AchievementCelebrationHost(
+        child: authState.isInitializing
+            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+            : authState.isAuthenticated
+                ? const HomeScreen()
+                : const AuthScreen(),
+      ),
     );
   }
 }

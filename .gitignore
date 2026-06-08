@@ -40,3 +40,7 @@ backend/firebase-credentials.json
 /tmp/
 credentials.txt
 Rutina+pesos.csv
+
+# Achievement image build (canonical copy = Supabase Storage)
+.achievement_build/
+assets/achievements/

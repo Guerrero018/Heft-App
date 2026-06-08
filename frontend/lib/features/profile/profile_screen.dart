@@ -5,10 +5,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_provider.dart';
 import '../body_progress/data/body_progress_provider.dart';
+import '../achievements/data/achievements_provider.dart';
 import 'data/privacy_preferences_provider.dart';
 import 'edit_profile_screen.dart';
 import 'widgets/profile_body_progress_section.dart';
 import 'widgets/profile_settings_menu.dart';
+import '../achievements/presentation/widgets/achievements_vitrine_section.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -21,9 +23,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => ref.read(bodyProgressProvider.notifier).loadAll(force: true),
-    );
+    Future.microtask(() async {
+      ref.read(bodyProgressProvider.notifier).loadAll(force: true);
+      await ref.read(achievementsProvider.notifier).refresh(force: true);
+    });
   }
 
   @override
@@ -68,7 +71,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ] else
                       const SizedBox(height: 24),
                     const SizedBox(height: 28),
-                    _AchievementsSection(),
+                    const AchievementsVitrineSection(),
                     const SizedBox(height: 28),
                     const ProfileBodyProgressSection(),
                     const SizedBox(height: 40),
@@ -240,104 +243,3 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-class _AchievementsSection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.workspace_premium, color: AppTheme.primaryColor, size: 22),
-              SizedBox(width: 8),
-              Text(
-                'Vitrina de logros',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _AchievementCard(
-                icon: Icons.emoji_events,
-                title: 'Club de los 100 kg',
-                subtitle: '(Banca)',
-                iconColor: Colors.orangeAccent,
-                circleColor: Colors.orangeAccent.withValues(alpha: 0.1),
-              ),
-              const SizedBox(width: 12),
-              _AchievementCard(
-                icon: Icons.local_fire_department,
-                title: 'Constancia',
-                subtitle: '(30 días)',
-                iconColor: Colors.redAccent,
-                circleColor: Colors.redAccent.withValues(alpha: 0.1),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AchievementCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color iconColor;
-  final Color circleColor;
-
-  const _AchievementCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.iconColor,
-    required this.circleColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
-        decoration: BoxDecoration(
-          color: AppTheme.cardColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: circleColor, shape: BoxShape.circle),
-              child: Icon(icon, color: iconColor, size: 24),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

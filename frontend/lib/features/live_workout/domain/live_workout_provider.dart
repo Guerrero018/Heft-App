@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../routines/domain/routine_model.dart';
 import '../../../core/api/api_client.dart';
+import '../../achievements/data/achievements_provider.dart';
 import '../../statistics/data/statistics_provider.dart';
 import '../../workouts/data/workout_provider.dart';
 import 'live_workout_state.dart';
@@ -364,6 +365,11 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
       }
     }
 
+    final unlockedBaseline = {
+      for (final a in ref.read(achievementsProvider).achievements)
+        if (a.isUnlocked) a.id,
+    };
+
     try {
       print('DEBUG: Finishing workout. Start: ${savedState.startTime}, End: $endTime');
       final response = await _api.post('workouts/', data: {
@@ -380,6 +386,9 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
       // Refresh history immediately so the new workout appears at the top
       ref.read(workoutHistoryProvider.notifier).fetchWorkouts();
       ref.invalidate(statisticsProvider);
+      await ref.read(achievementsProvider.notifier).sync(
+            unlockedBaseline: unlockedBaseline,
+          );
 
       state = LiveWorkoutState(); // Reset state
       return true;

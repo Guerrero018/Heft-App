@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../achievements/data/achievements_provider.dart';
 import '../domain/body_measure_model.dart';
 import 'body_progress_api.dart';
 
@@ -106,6 +107,10 @@ class BodyProgressNotifier extends Notifier<BodyProgressState> {
     double? thighRightCm,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
+    final unlockedBaseline = {
+      for (final a in ref.read(achievementsProvider).achievements)
+        if (a.isUnlocked) a.id,
+    };
     try {
       final formMap = <String, dynamic>{
         'weight': weight,
@@ -143,6 +148,9 @@ class BodyProgressNotifier extends Notifier<BodyProgressState> {
 
       await apiClient.post('body-measures/', data: payload);
       await loadAll(force: true);
+      await ref.read(achievementsProvider.notifier).sync(
+            unlockedBaseline: unlockedBaseline,
+          );
       return true;
     } on DioException catch (e) {
       state = state.copyWith(

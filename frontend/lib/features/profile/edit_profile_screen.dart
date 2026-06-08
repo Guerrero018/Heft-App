@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_message.dart';
+import '../achievements/data/achievements_provider.dart';
 import '../auth/auth_provider.dart';
 import '../home/data/week_streak_provider.dart';
 import '../statistics/data/statistics_provider.dart';
@@ -115,6 +116,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         'workout_days_per_week': _daysPerWeek,
       };
 
+      final unlockedBaseline = {
+        for (final a in ref.read(achievementsProvider).achievements)
+          if (a.isUnlocked) a.id,
+      };
+
       final authNotifier = ref.read(authProvider.notifier);
       await authNotifier.updateProfile(
         data: data,
@@ -124,6 +130,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (!mounted) return;
       final error = ref.read(authProvider).error;
       if (error == null) {
+        await ref.read(achievementsProvider.notifier).sync(
+              unlockedBaseline: unlockedBaseline,
+            );
+        if (!mounted) return;
         ref.invalidate(weekStreakProvider);
         ref.invalidate(statisticsProvider);
         final messenger = ScaffoldMessenger.of(context);

@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.statistics",
     "apps.notifications",
+    "apps.achievements",
     # Celery Beat scheduler
     "django_celery_beat",
     # Django Allauth (Social Auth)
@@ -212,6 +213,10 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 SUPABASE_PROFILE_BUCKET = os.getenv("SUPABASE_PROFILE_BUCKET", "profile-pics")
 SUPABASE_BODY_BUCKET = os.getenv("SUPABASE_BODY_BUCKET", "body-measures")
+SUPABASE_ACHIEVEMENTS_BUCKET = os.getenv("SUPABASE_ACHIEVEMENTS_BUCKET", "achievements")
+SUPABASE_ACHIEVEMENTS_BUCKET_PUBLIC = (
+    os.getenv("SUPABASE_ACHIEVEMENTS_BUCKET_PUBLIC", "True") == "True"
+)
 SUPABASE_PROFILE_BUCKET_PUBLIC = (
     os.getenv("SUPABASE_PROFILE_BUCKET_PUBLIC", "True") == "True"
 )
