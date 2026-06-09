@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/forgot_password_screen.dart';
+import '../../export/presentation/export_data_screen.dart';
 import '../data/privacy_preferences_provider.dart';
 import '../widgets/settings_ui.dart';
 
@@ -93,6 +94,18 @@ class PrivacySettingsScreen extends ConsumerWidget {
           const SettingsSectionTitle(icon: Icons.storage_outlined, title: 'Tus datos'),
           SettingsSectionCard(
             children: [
+              SettingsNavRow(
+                icon: Icons.download_outlined,
+                label: 'Exportar mis datos',
+                subtitle: 'CSV o PDF con filtros personalizados',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ExportDataScreen()),
+                  );
+                },
+              ),
+              const Divider(color: Colors.white10),
               SettingsNavRow(
                 icon: Icons.info_outline,
                 label: 'Qué datos guardamos',
