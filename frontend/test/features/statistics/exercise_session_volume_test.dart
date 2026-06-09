@@ -35,6 +35,8 @@ WorkoutSet _set({
   );
 }
 
+final _refDate = DateTime(2026, 5, 15);
+
 void main() {
   test('volumen de sesión = suma de peso × reps por ejercicio', () {
     final stats = buildStatisticsFromWorkouts(
@@ -51,6 +53,7 @@ void main() {
       exerciseMuscleById: {10: 'pecho'},
       apiPeriod: 'month',
       workoutDaysPerWeek: 3,
+      referenceDate: _refDate,
     );
 
     expect(stats.exerciseProgress, hasLength(1));
@@ -77,6 +80,7 @@ void main() {
       exerciseMuscleById: {10: 'pecho'},
       apiPeriod: 'month',
       workoutDaysPerWeek: 3,
+      referenceDate: _refDate,
     );
 
     final progress = stats.exerciseProgress.first;
@@ -103,6 +107,7 @@ void main() {
       exerciseMuscleById: {10: 'pecho'},
       apiPeriod: 'month',
       workoutDaysPerWeek: 3,
+      referenceDate: _refDate,
     );
 
     final progress = stats.exerciseProgress.first;

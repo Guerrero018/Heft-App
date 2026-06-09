@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -55,6 +56,8 @@ class StatisticsState {
 }
 
 class StatisticsNotifier extends Notifier<StatisticsState> {
+  Dio get _api => ref.read(apiClientProvider);
+
   List<WorkoutSession>? _cachedWorkouts;
   Map<int, String>? _cachedMuscleMap;
   Future<void>? _baseDataLoadFuture;
@@ -207,14 +210,17 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
 
   Future<UserStatistics> _buildStats(String apiPeriod) async {
     final local = _buildStatsLocal(apiPeriod);
-    final fromApi = await fetchUserStatisticsFromApi(apiPeriod);
+    final fromApi = await fetchUserStatisticsFromApi(apiPeriod, client: _api);
     if (fromApi == null) return local;
     return _mergeWithLocal(fromApi, local);
   }
 
   Future<UserStatistics> _buildMuscleMapStats() async {
     final local = _buildStatsLocal(muscleMapApiPeriod);
-    final fromApi = await fetchUserStatisticsFromApi(muscleMapApiPeriod);
+    final fromApi = await fetchUserStatisticsFromApi(
+      muscleMapApiPeriod,
+      client: _api,
+    );
     if (fromApi == null) return local;
     return _mergeWithLocal(fromApi, local);
   }
@@ -252,7 +258,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
     await ref.read(workoutHistoryProvider.notifier).fetchWorkouts();
     var workouts = ref.read(workoutHistoryProvider).workouts;
     if (workouts.isEmpty) {
-      workouts = await fetchAllWorkoutSessionsSafe();
+      workouts = await fetchAllWorkoutSessionsSafe(client: _api);
     }
     return _ensureWorkoutsHaveSets(workouts);
   }
@@ -271,7 +277,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
     final details = await Future.wait(
       idsToFetch.map((id) async {
         try {
-          final response = await apiClient.get('workouts/$id/');
+          final response = await _api.get('workouts/$id/');
           return MapEntry(
             id,
             WorkoutSession.fromJson(
@@ -312,10 +318,7 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
     String? nextUrl = 'exercises/';
 
     while (nextUrl != null) {
-      final response = await apiClient.get(
-        nextUrl,
-        queryParameters: nextUrl == 'exercises/' ? null : null,
-      );
+      final response = await _api.get(nextUrl);
       all.addAll(_parseExerciseList(response.data));
       nextUrl = _nextPagePath(response.data);
     }
@@ -371,12 +374,13 @@ class StatisticsNotifier extends Notifier<StatisticsState> {
 }
 
 /// Parseo tolerante de sesiones.
-Future<List<WorkoutSession>> fetchAllWorkoutSessionsSafe() async {
+Future<List<WorkoutSession>> fetchAllWorkoutSessionsSafe({Dio? client}) async {
+  final dio = client ?? apiClient;
   final all = <WorkoutSession>[];
   String? nextUrl = 'workouts/';
 
   while (nextUrl != null) {
-    final response = await apiClient.get(
+    final response = await dio.get(
       nextUrl,
       queryParameters:
           nextUrl == 'workouts/' ? {'ordering': '-start_time'} : null,

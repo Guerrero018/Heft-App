@@ -123,6 +123,101 @@ void main() {
     ).called(1);
   });
 
+  test('createRoutineWithExercises appends new routine', () async {
+    when(() => mockDio.post('routines/', data: any(named: 'data'))).thenAnswer(
+      (_) async => Response(
+        data: {
+          'id': 42,
+          'name': 'Push',
+          'description': 'Pecho',
+          'is_active': true,
+          'exercises': [],
+        },
+        statusCode: 201,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    final created = await container
+        .read(routineProvider.notifier)
+        .createRoutineWithExercises('Push', 'Pecho', []);
+
+    expect(created.id, 42);
+    expect(container.read(routineProvider).routines.any((r) => r.id == 42), true);
+  });
+
+  test('updateRoutine replaces routine in list', () async {
+    when(() => mockDio.get('routines/')).thenAnswer(
+      (_) async => Response(
+        data: [
+          {
+            'id': 1,
+            'name': 'Old',
+            'description': '',
+            'is_active': true,
+            'exercises': [],
+          },
+        ],
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+    when(() => mockDio.put('routines/1/', data: any(named: 'data'))).thenAnswer(
+      (_) async => Response(
+        data: {
+          'id': 1,
+          'name': 'Updated',
+          'description': 'Nueva',
+          'is_active': true,
+          'exercises': [],
+        },
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    await container.read(routineProvider.notifier).fetchRoutines();
+    await container.read(routineProvider.notifier).updateRoutine(
+          1,
+          'Updated',
+          'Nueva',
+          [],
+        );
+
+    expect(container.read(routineProvider).routines.first.name, 'Updated');
+  });
+
+  test('setRoutineActive archives and restores routine', () async {
+    when(() => mockDio.get('routines/')).thenAnswer(
+      (_) async => Response(
+        data: [
+          {
+            'id': 1,
+            'name': 'Legs',
+            'description': '',
+            'is_active': true,
+            'exercises': [],
+          },
+        ],
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+    when(() => mockDio.patch('routines/1/', data: any(named: 'data'))).thenAnswer(
+      (_) async => Response(
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    await container.read(routineProvider.notifier).fetchRoutines();
+    await container.read(routineProvider.notifier).setRoutineActive(1, false);
+    expect(container.read(routineProvider).activeRoutines, isEmpty);
+
+    await container.read(routineProvider.notifier).setRoutineActive(1, true);
+    expect(container.read(routineProvider).activeRoutines, hasLength(1));
+  });
+
   test('deleteRoutine updates list immediately without refetch', () async {
     when(() => mockDio.get('routines/')).thenAnswer(
       (_) async => Response(

@@ -1,12 +1,17 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/api/api_client.dart';
 import '../domain/statistics_model.dart';
 
 /// Carga estadísticas agregadas desde el backend.
-Future<UserStatistics?> fetchUserStatisticsFromApi(String period) async {
+Future<UserStatistics?> fetchUserStatisticsFromApi(
+  String period, {
+  Dio? client,
+}) async {
+  final dio = client ?? apiClient;
   try {
-    final response = await apiClient.get(
+    final response = await dio.get(
       'statistics/',
       queryParameters: {'period': period},
     );
