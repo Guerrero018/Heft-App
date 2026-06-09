@@ -12,6 +12,7 @@ import '../routines/data/routine_provider.dart';
 import '../routines/domain/routine_model.dart';
 import '../routines/presentation/create_routine_screen.dart';
 import '../routines/presentation/routine_detail_screen.dart';
+import '../routines/presentation/routine_template_library_screen.dart';
 import '../routines/presentation/widgets/routine_options_sheet.dart';
 import '../exercises/presentation/exercise_catalog_screen.dart';
 import '../live_workout/domain/live_workout_provider.dart';
@@ -225,18 +226,38 @@ class _InicioTab extends ConsumerWidget {
                       color: AppTheme.textColor,
                     ),
                   ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const CreateRoutineScreen(),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Biblioteca de plantillas',
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const RoutineTemplateLibraryScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.library_books_outlined,
+                          color: AppTheme.primaryColor,
                         ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.add_circle_outline_rounded,
-                      color: AppTheme.primaryColor,
-                    ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const CreateRoutineScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.add_circle_outline_rounded,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

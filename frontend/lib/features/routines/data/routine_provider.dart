@@ -288,6 +288,35 @@ class RoutineNotifier extends Notifier<RoutineState> {
     }
   }
 
+  Future<void> publishRoutine(int routineId) async {
+    final response = await _api.post('routines/$routineId/publish/');
+    _applyRoutineUpdate(Routine.fromJson(response.data));
+  }
+
+  Future<void> unpublishRoutine(int routineId) async {
+    final response = await _api.post('routines/$routineId/unpublish/');
+    _applyRoutineUpdate(Routine.fromJson(response.data));
+  }
+
+  Future<String> shareRoutine(int routineId) async {
+    final response = await _api.post('routines/$routineId/share/');
+    final code = response.data['share_code']?.toString() ?? '';
+    final current = findById(routineId);
+    if (current != null && code.isNotEmpty) {
+      _applyRoutineUpdate(current.copyWith(shareCode: code));
+    }
+    return code;
+  }
+
+  void _applyRoutineUpdate(Routine updated) {
+    state = state.copyWith(
+      routines: state.routines
+          .map((routine) => routine.id == updated.id ? updated : routine)
+          .toList(),
+      clearError: true,
+    );
+  }
+
   Future<void> duplicateRoutine(Routine routine) async {
     final exercises = routine.exercises.asMap().entries.map((entry) {
       final exercise = entry.value;
@@ -297,6 +326,7 @@ class RoutineNotifier extends Notifier<RoutineState> {
         'target_sets': exercise.targetSets,
         'target_reps': exercise.targetReps,
         'target_weight': exercise.targetWeight,
+        'rest_time_seconds': exercise.restTimeSeconds,
       };
     }).toList();
 

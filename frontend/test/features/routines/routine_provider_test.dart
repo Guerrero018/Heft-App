@@ -116,6 +116,7 @@ void main() {
               'target_sets': 4,
               'target_reps': 8,
               'target_weight': 80,
+              'rest_time_seconds': 60,
             },
           ],
         },
