@@ -10,7 +10,11 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
     ordering = ['-start_time'] # Orden por defecto: más reciente primero
 
     def get_queryset(self):
-        return (
+        qs = (
             WorkoutSession.objects.filter(user=self.request.user)
             .prefetch_related("sets", "sets__exercise", "routine")
         )
+        routine_id = self.request.query_params.get("routine")
+        if routine_id:
+            qs = qs.filter(routine_id=routine_id)
+        return qs

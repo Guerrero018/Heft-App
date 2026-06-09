@@ -7,5 +7,10 @@ class RoutineViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Users should only see their own routines
-        return Routine.objects.filter(user=self.request.user)
+        qs = Routine.objects.filter(user=self.request.user).prefetch_related(
+            "exercises__exercise"
+        )
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() in ("true", "1"))
+        return qs
