@@ -32,6 +32,22 @@ class Routine {
         'is_active': isActive,
         'exercises': exercises.map((e) => e.toJson()).toList(),
       };
+
+  Routine copyWith({
+    int? id,
+    String? name,
+    String? description,
+    bool? isActive,
+    List<RoutineExercise>? exercises,
+  }) {
+    return Routine(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      isActive: isActive ?? this.isActive,
+      exercises: exercises ?? this.exercises,
+    );
+  }
 }
 
 class RoutineExercise {
