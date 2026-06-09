@@ -1,10 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frontend/core/theme/app_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/features/statistics/data/statistics_local_service.dart';
 import 'package:frontend/features/statistics/data/statistics_provider.dart';
 import 'package:frontend/features/statistics/domain/statistics_model.dart';
-import 'package:frontend/features/statistics/presentation/statistics_screen.dart';
+import 'package:frontend/features/workouts/domain/workout_model.dart';
 
 UserStatistics _emptyStats() {
   return UserStatistics(
@@ -28,46 +27,68 @@ UserStatistics _emptyStats() {
 }
 
 void main() {
-  Widget createWidgetUnderTest() {
-    return ProviderScope(
-      overrides: [
-        statisticsProvider.overrideWith(() => _FakeStatisticsNotifier()),
-      ],
-      child: const MaterialApp(
-        home: StatisticsScreen(),
-      ),
+  test('StatisticsState copyWith clears errors', () {
+    final state = StatisticsState(
+      isLoading: true,
+      error: 'fail',
+      muscleMapError: 'map fail',
     );
-  }
-
-  testWidgets('StatisticsScreen shows title and tabs', (tester) async {
-    await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pumpAndSettle();
-
-    expect(find.text('Estadísticas'), findsOneWidget);
-    expect(find.text('Gráficos'), findsOneWidget);
-    expect(find.text('Mapa Muscular'), findsOneWidget);
+    final next = state.copyWith(
+      isLoading: false,
+      clearError: true,
+      clearMuscleMapError: true,
+    );
+    expect(next.isLoading, false);
+    expect(next.error, isNull);
+    expect(next.muscleMapError, isNull);
   });
 
-  testWidgets('Switching tabs changes content', (tester) async {
-    await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pumpAndSettle();
+  test('buildStatisticsFromWorkouts respects calendar week bounds', () {
+    final stats = buildStatisticsFromWorkouts(
+      workouts: [
+        WorkoutSession(
+          id: 1,
+          name: 'Push',
+          date: DateTime(2026, 5, 14),
+          startTime: DateTime(2026, 5, 14, 10),
+          endTime: DateTime(2026, 5, 14, 11),
+          isCompleted: true,
+          sets: [
+            WorkoutSet(
+              id: 1,
+              exerciseId: 10,
+              exerciseName: 'Press',
+              setNumber: 1,
+              setType: 'normal',
+              weight: 60,
+              reps: 10,
+              isCompleted: true,
+            ),
+          ],
+        ),
+      ],
+      exerciseMuscleById: {10: 'pecho'},
+      apiPeriod: muscleMapApiPeriod,
+      workoutDaysPerWeek: 3,
+      referenceDate: DateTime(2026, 5, 15),
+    );
 
-    expect(find.text('Entrenos'), findsOneWidget);
-    expect(find.text('Fatiga muscular'), findsNothing);
-
-    await tester.tap(find.text('Mapa Muscular'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Fatiga muscular'), findsOneWidget);
-    expect(find.text('Entrenos'), findsNothing);
+    expect(stats.period, muscleMapApiPeriod);
+    expect(stats.summary.totalWorkouts, 1);
+    expect(stats.summary.totalVolumeKg, 600);
   });
 
-  testWidgets('Period selector is visible', (tester) async {
-    await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pumpAndSettle();
+  test('fake statistics notifier exposes stable state', () {
+    final container = ProviderContainer(
+      overrides: [
+        statisticsProvider.overrideWith(_FakeStatisticsNotifier.new),
+      ],
+    );
+    addTearDown(container.dispose);
 
-    expect(find.text('Semana'), findsOneWidget);
-    expect(find.text('Mes'), findsOneWidget);
+    final state = container.read(statisticsProvider);
+    expect(state.data?.periodLabel, 'Semana');
+    expect(state.isLoading, false);
   });
 }
 

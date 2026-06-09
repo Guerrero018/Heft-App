@@ -1,13 +1,16 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/api/api_client.dart';
 import '../domain/workout_model.dart';
 
 /// Carga todas las sesiones del usuario (con paginación si el API la usa).
-Future<List<WorkoutSession>> fetchAllWorkoutSessions() async {
+Future<List<WorkoutSession>> fetchAllWorkoutSessions({Dio? client}) async {
+  final dio = client ?? apiClient;
   final all = <WorkoutSession>[];
   String? nextUrl = 'workouts/';
 
   while (nextUrl != null) {
-    final response = await apiClient.get(
+    final response = await dio.get(
       nextUrl,
       queryParameters: nextUrl == 'workouts/'
           ? {'ordering': '-start_time'}

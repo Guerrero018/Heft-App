@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../domain/workout_model.dart';
@@ -28,6 +29,8 @@ class WorkoutHistoryState {
 }
 
 class WorkoutHistoryNotifier extends Notifier<WorkoutHistoryState> {
+  Dio get _api => ref.read(apiClientProvider);
+
   @override
   WorkoutHistoryState build() {
     Future.microtask(() => fetchWorkouts());
@@ -37,7 +40,7 @@ class WorkoutHistoryNotifier extends Notifier<WorkoutHistoryState> {
   Future<void> fetchWorkouts() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final workouts = await fetchAllWorkoutSessions();
+      final workouts = await fetchAllWorkoutSessions(client: _api);
       state = state.copyWith(workouts: workouts, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -46,7 +49,7 @@ class WorkoutHistoryNotifier extends Notifier<WorkoutHistoryState> {
 
   Future<void> deleteWorkout(int id) async {
     try {
-      await apiClient.delete('workouts/$id/');
+      await _api.delete('workouts/$id/');
       state = state.copyWith(
         workouts: state.workouts.where((w) => w.id != id).toList(),
       );

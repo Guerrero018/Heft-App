@@ -52,6 +52,9 @@ void main() {
   });
 
   tearDown(() {
+    if (container.read(liveWorkoutProvider).isActive) {
+      container.read(liveWorkoutProvider.notifier).cancelWorkout();
+    }
     container.dispose();
   });
 
@@ -314,6 +317,83 @@ void main() {
     expect(state.activeExercises[0].routineExercise.exerciseName, 'New');
     // Note: our implementation resets sets to [WorkoutSetData()]
     expect(state.activeExercises[0].sets.length, 1);
+  });
+
+  test('startWorkout with routine prefills sets from last session', () async {
+    final routine = Routine(
+      id: 5,
+      name: 'Upper',
+      description: '',
+      isActive: true,
+      exercises: [
+        RoutineExercise(
+          id: 1,
+          exerciseId: 101,
+          exerciseName: 'Press',
+          muscleGroup: 'pecho',
+          order: 0,
+          targetSets: 2,
+          targetReps: 8,
+          targetWeight: 60,
+        ),
+      ],
+    );
+
+    when(
+      () => mockDio.get(
+        'workouts/',
+        queryParameters: any(named: 'queryParameters'),
+      ),
+    ).thenAnswer(
+      (_) async => Response(
+        requestOptions: RequestOptions(path: 'workouts/'),
+        data: [
+          {
+            'sets': [
+              {'exercise': 101, 'weight': 55, 'reps': 10},
+            ],
+          },
+        ],
+      ),
+    );
+
+    final notifier = container.read(liveWorkoutProvider.notifier);
+    await notifier.startWorkout(routine);
+
+    final active = container.read(liveWorkoutProvider).activeExercises.first;
+    expect(active.sets.first.prevWeight, 55);
+    expect(active.sets.first.prevReps, 10);
+    expect(active.sets.length, 2);
+  });
+
+  test('rest timer starts and can be adjusted', () async {
+    final notifier = container.read(liveWorkoutProvider.notifier);
+    await notifier.startWorkout(null, sessionName: 'Timer test');
+    notifier.toggleRestTimer(true);
+
+    final exercise = RoutineExercise(
+      id: 1,
+      exerciseId: 101,
+      exerciseName: 'Curl',
+      muscleGroup: 'Biceps',
+      order: 1,
+      targetSets: 1,
+      targetReps: 10,
+      targetWeight: 15,
+    );
+    notifier.addExercise(exercise);
+
+    final setId = container.read(liveWorkoutProvider).activeExercises[0].sets[0].id;
+    notifier.toggleSetComplete(0, setId);
+
+    expect(container.read(liveWorkoutProvider).isResting, true);
+    notifier.adjustRestTimer(30);
+    expect(
+      container.read(liveWorkoutProvider).restSecondsRemaining,
+      greaterThan(90),
+    );
+    notifier.stopRestTimer();
+    expect(container.read(liveWorkoutProvider).isResting, false);
   });
 
   test('Reordering exercises updates their position', () async {
