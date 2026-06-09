@@ -109,21 +109,37 @@ class ExportNotifier extends Notifier<ExportState> {
 
   String _friendlyError(Object error) {
     if (error is DioException) {
-      final data = error.response?.data;
-      if (data is Map) {
-        final detail = data['detail'];
-        if (detail is String) return detail;
-        for (final value in data.values) {
-          if (value is List && value.isNotEmpty) {
-            return value.first.toString();
-          }
-          if (value is String) return value;
-        }
-      }
-      return 'No se pudo completar la exportacion. Revisa tu conexion.';
+      return friendlyExportError(error);
     }
     return error.toString();
   }
+}
+
+String friendlyExportError(DioException e) {
+  final status = e.response?.statusCode;
+  if (status == 404) {
+    return 'El servidor aún no tiene activada la exportación de datos.\n'
+        'Despliega el backend actualizado en Render o usa API_BASE_URL apuntando a tu servidor local.';
+  }
+  if (status == 401) {
+    return 'Sesión expirada. Vuelve a iniciar sesión.';
+  }
+  if (e.type == DioExceptionType.connectionError ||
+      e.type == DioExceptionType.connectionTimeout) {
+    return 'No hay conexión con el servidor. Comprueba tu red o que el backend está en marcha.';
+  }
+  final data = e.response?.data;
+  if (data is Map) {
+    final detail = data['detail'];
+    if (detail is String) return detail;
+    for (final value in data.values) {
+      if (value is List && value.isNotEmpty) {
+        return value.first.toString();
+      }
+      if (value is String) return value;
+    }
+  }
+  return 'No se pudo completar la exportación.';
 }
 
 final exportProvider = NotifierProvider<ExportNotifier, ExportState>(() {

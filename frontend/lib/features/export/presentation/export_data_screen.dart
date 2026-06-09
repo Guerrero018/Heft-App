@@ -317,8 +317,10 @@ class _ExportDataScreenState extends ConsumerState<ExportDataScreen> {
           _PreviewCard(
             isLoading: exportState.isPreviewLoading,
             preview: preview,
+            error: exportState.error,
           ),
-          if (exportState.error != null) ...[
+          if (exportState.error != null &&
+              exportState.preview != null) ...[
             const SizedBox(height: 12),
             Text(
               exportState.error!,
@@ -433,23 +435,59 @@ class _DropdownFilter extends StatelessWidget {
     required this.onChanged,
   });
 
+  String _labelFor(int? id) {
+    for (final item in items) {
+      if (item.value == id && item.child is Text) {
+        return (item.child as Text).data ?? '';
+      }
+    }
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           DropdownButtonFormField<int?>(
+            isExpanded: true,
             initialValue: value,
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             dropdownColor: AppTheme.cardColor,
             style: const TextStyle(color: Colors.white),
-            items: items,
+            selectedItemBuilder: (context) => items.map((item) {
+              final text = item.child is Text
+                  ? (item.child as Text).data ?? ''
+                  : _labelFor(item.value);
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  text,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              );
+            }).toList(),
+            items: items
+                .map(
+                  (item) => DropdownMenuItem<int?>(
+                    value: item.value,
+                    child: item.child is Text
+                        ? Text(
+                            (item.child as Text).data ?? '',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          )
+                        : item.child,
+                  ),
+                )
+                .toList(),
             onChanged: onChanged,
           ),
         ],
@@ -461,8 +499,13 @@ class _DropdownFilter extends StatelessWidget {
 class _PreviewCard extends StatelessWidget {
   final bool isLoading;
   final ExportPreview? preview;
+  final String? error;
 
-  const _PreviewCard({required this.isLoading, required this.preview});
+  const _PreviewCard({
+    required this.isLoading,
+    required this.preview,
+    this.error,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -484,6 +527,11 @@ class _PreviewCard extends StatelessWidget {
           const SizedBox(height: 10),
           if (isLoading)
             const LinearProgressIndicator(color: AppTheme.primaryColor, minHeight: 2)
+          else if (error != null && preview == null)
+            Text(
+              error!,
+              style: const TextStyle(color: Colors.redAccent, height: 1.4),
+            )
           else if (preview == null)
             const Text('No disponible', style: TextStyle(color: AppTheme.hintColor))
           else ...[
