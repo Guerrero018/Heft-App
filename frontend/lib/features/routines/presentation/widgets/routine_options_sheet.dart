@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -137,6 +138,22 @@ class _RoutineOptionsSheet extends ConsumerWidget {
             onTap: () => _duplicate(hostContext, ref, currentRoutine),
           ),
           _OptionItem(
+            icon: currentRoutine.isPublic
+                ? Icons.public_off_outlined
+                : Icons.public_outlined,
+            title: currentRoutine.isPublic
+                ? 'Quitar de biblioteca pública'
+                : 'Publicar en biblioteca',
+            enabled: !isMutating && currentRoutine.exercises.isNotEmpty,
+            onTap: () => _togglePublish(hostContext, ref, currentRoutine),
+          ),
+          _OptionItem(
+            icon: Icons.ios_share_outlined,
+            title: 'Compartir con código',
+            enabled: !isMutating && currentRoutine.exercises.isNotEmpty,
+            onTap: () => _shareWithCode(hostContext, ref, currentRoutine),
+          ),
+          _OptionItem(
             icon: currentRoutine.isActive
                 ? Icons.archive_outlined
                 : Icons.unarchive_outlined,
@@ -159,6 +176,96 @@ class _RoutineOptionsSheet extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _togglePublish(
+    BuildContext context,
+    WidgetRef ref,
+    Routine currentRoutine,
+  ) async {
+    Navigator.pop(sheetContext);
+    try {
+      final notifier = ref.read(routineProvider.notifier);
+      if (currentRoutine.isPublic) {
+        await notifier.unpublishRoutine(currentRoutine.id);
+        if (context.mounted) {
+          AppMessage.showSuccess(context, 'Rutina retirada de la biblioteca');
+        }
+      } else {
+        await notifier.publishRoutine(currentRoutine.id);
+        if (context.mounted) {
+          AppMessage.showSuccess(context, 'Rutina publicada en la biblioteca');
+        }
+      }
+    } catch (_) {
+      if (context.mounted) {
+        AppMessage.showError(
+          context,
+          'No se pudo actualizar la visibilidad de la rutina',
+        );
+      }
+    }
+  }
+
+  Future<void> _shareWithCode(
+    BuildContext context,
+    WidgetRef ref,
+    Routine currentRoutine,
+  ) async {
+    Navigator.pop(sheetContext);
+    try {
+      final code =
+          await ref.read(routineProvider.notifier).shareRoutine(currentRoutine.id);
+      if (!context.mounted || code.isEmpty) return;
+
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppTheme.surfaceColor,
+          title: const Text(
+            'Código de compartir',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Comparte este código con otro usuario de Heft para que importe tu rutina:',
+                style: TextStyle(color: AppTheme.hintColor),
+              ),
+              const SizedBox(height: 16),
+              SelectableText(
+                code,
+                style: const TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 3,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: code));
+                Navigator.pop(ctx);
+                AppMessage.showSuccess(context, 'Código copiado');
+              },
+              child: const Text(
+                'Copiar',
+                style: TextStyle(color: AppTheme.primaryColor),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        AppMessage.showError(context, 'No se pudo generar el código');
+      }
+    }
   }
 
   Future<void> _duplicate(
