@@ -192,6 +192,40 @@ class LiveWorkoutScreen extends ConsumerWidget {
           context,
           'Marca al menos una serie como completada antes de finalizar',
         );
+      case FinishWorkoutResult.failedRetryable:
+        final retry = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppTheme.surfaceColor,
+            title: const Text(
+              'No se pudo guardar',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: const Text(
+              'Tu sesión sigue activa. ¿Quieres intentarlo de nuevo?',
+              style: TextStyle(color: AppTheme.hintColor),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text(
+                  'Seguir entrenando',
+                  style: TextStyle(color: AppTheme.hintColor),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text(
+                  'Reintentar',
+                  style: TextStyle(color: AppTheme.primaryColor),
+                ),
+              ),
+            ],
+          ),
+        );
+        if (retry == true && context.mounted) {
+          await _finishWorkout(context, ref);
+        }
       case FinishWorkoutResult.failed:
         AppMessage.showError(context, 'No se pudo guardar el entrenamiento');
     }
