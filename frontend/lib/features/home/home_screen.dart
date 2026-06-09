@@ -7,11 +7,12 @@ import '../../core/offline/widgets/offline_status_banner.dart';
 import '../../core/utils/label_translations.dart';
 import '../auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/app_message.dart';
 import '../profile/profile_screen.dart';
 import '../routines/data/routine_provider.dart';
 import '../routines/domain/routine_model.dart';
 import '../routines/presentation/create_routine_screen.dart';
+import '../routines/presentation/routine_detail_screen.dart';
+import '../routines/presentation/widgets/routine_options_sheet.dart';
 import '../exercises/presentation/exercise_catalog_screen.dart';
 import '../live_workout/domain/live_workout_provider.dart';
 import '../live_workout/presentation/screens/live_workout_screen.dart';
@@ -253,16 +254,7 @@ class _InicioTab extends ConsumerWidget {
               else if (routineState.routines.isEmpty)
                 _buildEmptyState()
               else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: routineState.routines.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    return RoutineCard(routine: routineState.routines[index]);
-                  },
-                ),
+                const _RoutinesListSection(),
 
               const SizedBox(height: 24),
             ],
@@ -381,158 +373,109 @@ class _InicioTab extends ConsumerWidget {
   }
 }
 
+class _RoutinesListSection extends ConsumerStatefulWidget {
+  const _RoutinesListSection();
+
+  @override
+  ConsumerState<_RoutinesListSection> createState() =>
+      _RoutinesListSectionState();
+}
+
+class _RoutinesListSectionState extends ConsumerState<_RoutinesListSection> {
+  bool _showArchived = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final routineState = ref.watch(routineProvider);
+    final active = routineState.activeRoutines;
+    final archived = routineState.archivedRoutines;
+
+    return Column(
+      children: [
+        if (active.isEmpty)
+          _buildNoActiveRoutinesMessage(archived.isNotEmpty)
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: active.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 16),
+            itemBuilder: (context, index) {
+              return RoutineCard(
+                key: ValueKey(active[index].id),
+                routine: active[index],
+              );
+            },
+          ),
+        if (archived.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => setState(() => _showArchived = !_showArchived),
+              icon: Icon(
+                _showArchived
+                    ? Icons.expand_less
+                    : Icons.archive_outlined,
+                size: 18,
+              ),
+              label: Text(
+                _showArchived
+                    ? 'Ocultar archivadas (${archived.length})'
+                    : 'Ver archivadas (${archived.length})',
+              ),
+            ),
+          ),
+          if (_showArchived)
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: archived.length,
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: 16),
+              itemBuilder: (context, index) {
+                return Opacity(
+                  opacity: 0.75,
+                  child: RoutineCard(
+                    key: ValueKey('archived-${archived[index].id}'),
+                    routine: archived[index],
+                  ),
+                );
+              },
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildNoActiveRoutinesMessage(bool hasArchived) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Text(
+        hasArchived
+            ? 'No tienes rutinas activas. Restaura una archivada o crea una nueva.'
+            : 'Crea tu primera rutina con el botón +',
+        style: const TextStyle(color: AppTheme.hintColor),
+      ),
+    );
+  }
+}
+
 class RoutineCard extends ConsumerWidget {
   final Routine routine;
 
   const RoutineCard({super.key, required this.routine});
 
-  void _showRoutineOptions(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A).withOpacity(0.95),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              routine.name,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            _buildOptionItem(
-              icon: Icons.play_arrow_rounded,
-              title: 'Iniciar entrenamiento',
-              onTap: () {
-                Navigator.pop(context);
-                ref.read(liveWorkoutProvider.notifier).startWorkout(routine);
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const LiveWorkoutScreen()),
-                );
-              },
-              color: AppTheme.primaryColor,
-            ),
-            _buildOptionItem(
-              icon: Icons.edit_outlined,
-              title: 'Editar rutina',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => CreateRoutineScreen(existingRoutine: routine),
-                  ),
-                );
-              },
-            ),
-            _buildOptionItem(
-              icon: Icons.delete_outline_rounded,
-              title: 'Eliminar rutina',
-              onTap: () {
-                Navigator.pop(context);
-                _confirmDelete(context, ref);
-              },
-              color: Colors.redAccent,
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOptionItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    Color color = Colors.white,
-  }) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: color, size: 22),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: color,
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-    );
-  }
-
-  void _confirmDelete(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
-        title: const Text(
-          'Eliminar Rutina',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Text(
-          '¿Estás seguro de que deseas eliminar la rutina "${routine.name}"?',
-          style: const TextStyle(color: AppTheme.hintColor),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: AppTheme.hintColor),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              try {
-                await ref
-                    .read(routineProvider.notifier)
-                    .deleteRoutine(routine.id!);
-                if (context.mounted) {
-                  AppMessage.showSuccess(context, 'Rutina eliminada');
-                }
-              } catch (_) {
-                if (context.mounted) {
-                  AppMessage.showError(
-                    context,
-                    'Error al eliminar la rutina',
-                  );
-                }
-              }
-            },
-            child: const Text(
-              'Eliminar',
-              style: TextStyle(color: Colors.redAccent),
-            ),
-          ),
-        ],
+  void _openDetail(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => RoutineDetailScreen(routine: routine),
       ),
     );
   }
@@ -556,7 +499,7 @@ class RoutineCard extends ConsumerWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () {},
+            onTap: () => _openDetail(context),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -581,7 +524,8 @@ class RoutineCard extends ConsumerWidget {
                           color: AppTheme.hintColor,
                           size: 20,
                         ),
-                        onPressed: () => _showRoutineOptions(context, ref),
+                        onPressed: () =>
+                            showRoutineOptionsSheet(context, ref, routine),
                       ),
                     ],
                   ),
