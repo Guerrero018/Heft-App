@@ -1,0 +1,19 @@
+[run]
+source = apps
+omit =
+    */migrations/*
+    */management/*
+    */tests/*
+    */admin.py
+    */apps.py
+    */cron.py
+    */tasks.py
+    */firebase.py
+
+[report]
+precision = 1
+show_missing = True
+skip_empty = True
+
+[html]
+directory = htmlcov
