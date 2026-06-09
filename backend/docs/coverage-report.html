@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Heft — Informe de cobertura de tests (Backend)</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --surface: #1a1d24;
+      --card: #22262f;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f4f4f5;
+      --muted: #9ca3af;
+      --primary: #c8f542;
+      --primary-dim: rgba(200, 245, 66, 0.15);
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --blue: #60a5fa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    header h1 span { color: var(--primary); }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 0.75rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .meta strong { color: var(--text); }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem 1.35rem;
+    }
+
+    .stat-card.highlight {
+      border-color: rgba(200, 245, 66, 0.35);
+      background: linear-gradient(135deg, var(--card) 0%, rgba(200, 245, 66, 0.06) 100%);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .stat-sub { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+
+    section { margin-bottom: 2.5rem; }
+
+    h2 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    h2::before {
+      content: "";
+      width: 4px;
+      height: 1.1rem;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .app-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.25rem;
+    }
+
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.65rem;
+    }
+
+    .app-name { font-weight: 600; font-size: 1rem; }
+
+    .badge {
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+    }
+
+    .badge.high { background: rgba(74, 222, 128, 0.15); color: var(--green); }
+    .badge.mid { background: rgba(251, 191, 36, 0.15); color: var(--yellow); }
+    .badge.low { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+
+    .progress-track {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+
+    .app-detail { font-size: 0.82rem; color: var(--muted); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      background: var(--surface);
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    thead { background: var(--card); }
+
+    th, td {
+      padding: 0.7rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+    .pct { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .pct.high { color: var(--green); }
+    .pct.mid { color: var(--yellow); }
+    .pct.low { color: var(--red); }
+
+    .file-table-wrap {
+      max-height: 520px;
+      overflow: auto;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .file-table-wrap table { border: none; border-radius: 0; }
+
+    .file-table-wrap thead { position: sticky; top: 0; z-index: 1; }
+
+    code {
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 0.8rem;
+      color: #d1d5db;
+    }
+
+    .callout {
+      background: var(--primary-dim);
+      border: 1px solid rgba(200, 245, 66, 0.25);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .callout.warn {
+      background: rgba(251, 191, 36, 0.08);
+      border-color: rgba(251, 191, 36, 0.25);
+    }
+
+    .callout ul { margin: 0.5rem 0 0 1.2rem; }
+
+    .callout li { margin: 0.25rem 0; color: var(--muted); }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .cmd-box {
+      background: #0a0c10;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 0.8rem;
+      color: #a5f3fc;
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.6;
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1><span>Heft</span> — Cobertura de tests (Backend)</h1>
+      <div class="meta">
+        <span>Generado: <strong>9 jun 2026</strong></span>
+        <span>Entorno: <strong>settings_test.py</strong> (SQLite en memoria)</span>
+        <span>Tests ejecutados: <strong>90</strong> en ~37 s</span>
+        <span>Herramienta: <strong>coverage.py</strong></span>
+      </div>
+    </header>
+
+    <div class="hero-stats">
+      <div class="stat-card highlight">
+        <div class="stat-label">Cobertura global</div>
+        <div class="stat-value" style="color: var(--green)">86.9%</div>
+        <div class="stat-sub">1.762 líneas · 230 sin cubrir</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Apps core</div>
+        <div class="stat-value" style="color: var(--primary)">96.1%</div>
+        <div class="stat-sub">workouts · routines · exercises · statistics</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Archivos de test</div>
+        <div class="stat-value">7</div>
+        <div class="stat-sub">~107 casos de test</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Umbral objetivo</div>
+        <div class="stat-value">80%</div>
+        <div class="stat-sub">Core cumplido ✓</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Alcance del informe</strong> — Código en <code>apps/</code> (models, views, serializers, services, signals, urls, storage).
+      Excluye: migraciones, <code>management/</code>, archivos de tests y módulos no importados durante la suite (cron, Celery, Firebase → 0%).
+    </div>
+
+    <section>
+      <h2>Resumen por app</h2>
+      <div class="app-grid" id="app-grid"></div>
+    </section>
+
+    <section>
+      <h2>Cobertura por capa</h2>
+      <div class="two-col">
+        <table>
+          <thead>
+            <tr><th>Capa</th><th>Cobertura</th><th>Notas</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>views</strong></td><td class="pct high">97–100%</td><td>Tests API (APITestCase)</td></tr>
+            <tr><td><strong>serializers</strong></td><td class="pct mid">58–100%</td><td>users y notifications más bajos</td></tr>
+            <tr><td><strong>models</strong></td><td class="pct high">91–100%</td><td>Vía API, sin tests de modelo aislados</td></tr>
+            <tr><td><strong>services</strong></td><td class="pct high">91–98%</td><td>statistics + achievements</td></tr>
+            <tr><td><strong>signals</strong></td><td class="pct high">~97%</td><td>achievements</td></tr>
+            <tr><td><strong>storage / media</strong></td><td class="pct mid">58–68%</td><td>Supabase, achievement storage</td></tr>
+            <tr><td><strong>cron / tasks / firebase</strong></td><td class="pct low">0%</td><td>No ejecutados en tests</td></tr>
+            <tr><td><strong>management / admin</strong></td><td class="pct low">0%</td><td>No testeados</td></tr>
+          </tbody>
+        </table>
+        <table>
+          <thead>
+            <tr><th>Archivo de tests</th><th>~Casos</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>notifications/tests.py</code></td><td>28</td></tr>
+            <tr><td><code>achievements/tests.py</code></td><td>23</td></tr>
+            <tr><td><code>users/tests.py</code></td><td>16</td></tr>
+            <tr><td><code>statistics/tests.py</code></td><td>13</td></tr>
+            <tr><td><code>exercises/tests.py</code></td><td>10</td></tr>
+            <tr><td><code>workouts/tests.py</code></td><td>9</td></tr>
+            <tr><td><code>routines/tests.py</code></td><td>8</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Huecos principales</h2>
+      <div class="callout warn">
+        <strong>Prioridad para subir hacia 90%+ global</strong>
+        <ul>
+          <li><code>users/views.py</code> (73.5%) — Google login, perfil, subida de fotos</li>
+          <li><code>users/serializers.py</code> (75%) — validaciones de perfil y onboarding</li>
+          <li><code>notifications/serializers.py</code> (58.3%) — preferencias push</li>
+          <li><code>achievements/storage.py</code> (58.3%) y <code>users/storage/supabase_storage.py</code> (68.1%)</li>
+          <li><code>notifications/cron.py</code>, <code>tasks.py</code>, <code>firebase.py</code> — jobs en background</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Detalle por archivo</h2>
+      <div class="file-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Archivo</th>
+              <th>Líneas</th>
+              <th>Sin cubrir</th>
+              <th>%</th>
+              <th>Líneas faltantes</th>
+            </tr>
+          </thead>
+          <tbody id="file-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Regenerar informe</h2>
+      <div class="cmd-box">cd backend
+$env:DJANGO_SETTINGS_MODULE="heft_core.settings_test"
+coverage run --source=apps manage.py test apps -v 0
+coverage report --omit="*/migrations/*,*/tests.py,*/management/*"
+python scripts/check_core_coverage.py   # solo apps core (≥80%)
+
+# Informe HTML interactivo por línea (coverage estándar):
+coverage html --omit="*/migrations/*,*/tests.py,*/management/*"
+# Abre htmlcov/index.html</div>
+    </section>
+
+    <footer>
+      Proyecto Heft · Rama <code>feature/backend-test-coverage</code> ·
+      Informe estático en <code>backend/docs/coverage-report.html</code>
+    </footer>
+  </div>
+
+  <script>
+    const apps = [
+      { name: "workouts", pct: 99.0, detail: "views, serializers, models — núcleo de entrenos", stmts: 97, miss: 1 },
+      { name: "routines", pct: 98.6, detail: "CRUD, filtros is_active, ejercicios anidados", stmts: 73, miss: 1 },
+      { name: "exercises", pct: 97.5, detail: "paginación, filtros, popular por uso", stmts: 81, miss: 2 },
+      { name: "statistics", pct: 92.4, detail: "aggregates, periodos, mapa muscular", stmts: 158, miss: 12 },
+      { name: "achievements", pct: 91.2, detail: "evaluator, signals; storage bajo", stmts: 591, miss: 52 },
+      { name: "notifications", pct: 84.0, detail: "views OK; serializers y jobs pendientes", stmts: 212, miss: 34 },
+      { name: "users", pct: 76.7, detail: "auth y reset OK; perfil y Supabase parcial", stmts: 550, miss: 128 },
+    ];
+
+    const files = [
+      ["apps/achievements/catalog.py", 37, 0, 100.0, ""],
+      ["apps/achievements/evaluator.py", 308, 27, 91.2, "99, 110, 112, 118, 131-136…"],
+      ["apps/achievements/exercise_matcher.py", 49, 5, 89.8, "54, 80, 98, 161, 176"],
+      ["apps/achievements/models.py", 45, 3, 93.3, "56, 82-83"],
+      ["apps/achievements/serializers.py", 22, 5, 77.3, "36-40"],
+      ["apps/achievements/services.py", 52, 1, 98.1, "87"],
+      ["apps/achievements/signals.py", 36, 1, 97.2, "39"],
+      ["apps/achievements/storage.py", 24, 10, 58.3, "9-18, 41-43"],
+      ["apps/achievements/urls.py", 3, 0, 100.0, ""],
+      ["apps/achievements/views.py", 15, 0, 100.0, ""],
+      ["apps/exercises/models.py", 24, 2, 91.7, "77-78"],
+      ["apps/exercises/serializers.py", 11, 0, 100.0, ""],
+      ["apps/exercises/urls.py", 6, 0, 100.0, ""],
+      ["apps/exercises/views.py", 40, 0, 100.0, ""],
+      ["apps/notifications/models.py", 62, 2, 96.8, "74, 105"],
+      ["apps/notifications/serializers.py", 60, 25, 58.3, "17-61, 78-80"],
+      ["apps/notifications/timezone_utils.py", 15, 5, 66.7, "17-21"],
+      ["apps/notifications/urls.py", 3, 0, 100.0, ""],
+      ["apps/notifications/views.py", 72, 2, 97.2, "18, 119"],
+      ["apps/routines/models.py", 18, 0, 100.0, ""],
+      ["apps/routines/serializers.py", 37, 1, 97.3, "30"],
+      ["apps/routines/urls.py", 6, 0, 100.0, ""],
+      ["apps/routines/views.py", 12, 0, 100.0, ""],
+      ["apps/statistics/services.py", 143, 12, 91.6, "120, 255, 272-279, 322-323"],
+      ["apps/statistics/urls.py", 3, 0, 100.0, ""],
+      ["apps/statistics/views.py", 12, 0, 100.0, ""],
+      ["apps/users/body_measure_photos.py", 18, 2, 88.9, "19, 23"],
+      ["apps/users/media_utils.py", 29, 10, 65.5, "9, 18, 22, 28-38"],
+      ["apps/users/models.py", 67, 5, 92.5, "37, 62, 84, 104, 108"],
+      ["apps/users/serializers.py", 168, 42, 75.0, "33-47, 61-136…"],
+      ["apps/users/storage/supabase_client.py", 13, 1, 92.3, "15"],
+      ["apps/users/storage/supabase_storage.py", 91, 29, 68.1, "35-133"],
+      ["apps/users/upload_paths.py", 9, 0, 100.0, ""],
+      ["apps/users/urls.py", 6, 0, 100.0, ""],
+      ["apps/users/views.py", 147, 39, 73.5, "51-53, 143-190…"],
+      ["apps/workouts/models.py", 25, 1, 96.0, "20"],
+      ["apps/workouts/serializers.py", 51, 0, 100.0, ""],
+      ["apps/workouts/urls.py", 6, 0, 100.0, ""],
+      ["apps/workouts/views.py", 15, 0, 100.0, ""],
+    ];
+
+    function pctClass(p) {
+      if (p >= 85) return "high";
+      if (p >= 70) return "mid";
+      return "low";
+    }
+
+    function barColor(p) {
+      if (p >= 85) return "var(--green)";
+      if (p >= 70) return "var(--yellow)";
+      return "var(--red)";
+    }
+
+    const appGrid = document.getElementById("app-grid");
+    apps.forEach((a) => {
+      const cls = pctClass(a.pct);
+      appGrid.innerHTML += `
+        <div class="app-card">
+          <div class="app-header">
+            <span class="app-name">${a.name}</span>
+            <span class="badge ${cls}">${a.pct.toFixed(1)}%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${a.pct}%;background:${barColor(a.pct)}"></div>
+          </div>
+          <div class="app-detail">${a.detail}<br>${a.stmts - a.miss} / ${a.stmts} líneas cubiertas</div>
+        </div>`;
+    });
+
+    const fileRows = document.getElementById("file-rows");
+    files.sort((a, b) => a[0].localeCompare(b[0]));
+    files.forEach(([path, stmts, miss, pct, missing]) => {
+      const cls = pctClass(pct);
+      fileRows.innerHTML += `
+        <tr>
+          <td><code>${path}</code></td>
+          <td>${stmts}</td>
+          <td>${miss}</td>
+          <td class="pct ${cls}">${pct.toFixed(1)}%</td>
+          <td style="color:var(--muted);font-size:0.78rem">${missing || "—"}</td>
+        </tr>`;
+    });
+  </script>
+</body>
+</html>

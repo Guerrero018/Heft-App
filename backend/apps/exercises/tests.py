@@ -99,3 +99,41 @@ class ExerciseApiTests(APITestCase):
         self.assertIsInstance(response.data, list)
         self.assertGreaterEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['name'], 'Curl Mancuerna')
+
+    def test_popular_fallback_without_history(self):
+        response = self.client.get('/api/exercises/popular/?limit=3')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreater(len(response.data), 0)
+        names = {item['name'] for item in response.data}
+        self.assertNotIn('Privado Ajeno', names)
+
+    def test_filter_by_exercise_type(self):
+        response = self.client.get('/api/exercises/?exercise_type=mancuernas')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        names = [item['name'] for item in response.data['results']]
+        self.assertEqual(names, ['Curl Mancuerna'])
+
+    def test_create_custom_exercise(self):
+        response = self.client.post(
+            '/api/exercises/',
+            {
+                'name': 'Mi ejercicio',
+                'muscle_group': 'pecho',
+                'exercise_type': 'barra',
+                'is_global': False,
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Mi ejercicio')
+        self.assertFalse(response.data['is_global'])
+
+    def test_private_exercise_from_other_user_not_listed(self):
+        response = self.client.get('/api/exercises/')
+        names = [item['name'] for item in response.data['results']]
+        self.assertNotIn('Privado Ajeno', names)
+
+    def test_list_requires_auth(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get('/api/exercises/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

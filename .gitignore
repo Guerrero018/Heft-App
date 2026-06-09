@@ -33,6 +33,9 @@ backend/media/
 backend/staticfiles/
 backend/.env
 backend/firebase-credentials.json
+backend/.coverage
+backend/coverage.json
+backend/htmlcov/
 
 # Artifacts
 .gemini/
