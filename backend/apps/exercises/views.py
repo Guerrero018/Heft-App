@@ -1,77 +1,71 @@
-from rest_framework import viewsets, permissions
+from django.db.models import Count, Q
+from rest_framework import viewsets, permissions, filters
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from django.db import models
+
 from .models import Exercise
 from .serializers import ExerciseSerializer
 
+
+class ExercisePagination(PageNumberPagination):
+    page_size = 40
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class ExerciseViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for exercises.
+    Supports server-side search, muscle_group, and exercise_type filters with pagination.
+    """
     serializer_class = ExerciseSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = ExercisePagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'muscle_group', 'exercise_type']
+    ordering_fields = ['name', 'muscle_group', 'exercise_type']
+    ordering = ['name']
 
     def get_queryset(self):
         user = self.request.user
-        return Exercise.objects.filter(models.Q(is_global=True) | models.Q(user=user))
+        queryset = Exercise.objects.filter(
+            Q(user__isnull=True) | Q(user=user)
+        )
 
-    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], pagination_class=None)
+        muscle_group = self.request.query_params.get('muscle_group')
+        if muscle_group:
+            queryset = queryset.filter(muscle_group__iexact=muscle_group)
+
+        exercise_type = self.request.query_params.get('exercise_type')
+        if exercise_type:
+            queryset = queryset.filter(exercise_type__iexact=exercise_type)
+
+        return queryset
+
+    @action(detail=False, methods=['get'], pagination_class=None)
     def popular(self, request):
         """
-        Devuelve el catálogo de populares utilizando búsqueda 'Fuzzy' ultrarrobusta.
-        Ignora errores de tildes o diferencias entre la BD local y la de producción.
+        Returns exercises ranked by how often they appear in the user's completed sets.
+        Falls back to global catalog exercises when the user has no history.
         """
-        # Formato: (fragmento_grupo_muscular, [palabras_clave_del_ejercicio])
-        robust_search_map = [
-            # PECHO
-            ('pecho', ['banca', 'inclinad', 'declinad', 'apertura', 'cruce', 'flexion', 'fondo']),
-            # ESPALDA
-            ('espalda', ['dominada', 'remo', 'jalon', 'jalón', 'pullover']),
-            # CUÁDRICEPS / PIERNA
-            ('cuadriceps', ['sentadilla', 'prensa', 'extension', 'extensión', 'zancada', 'hack', 'bulgara', 'búlgara']),
-            # ISQUIOTIBIALES / FEMORAL (Búsqueda súper amplia)
-            ('isquio', ['curl', 'peso muerto', 'femoral', 'buenos dias', 'buenos días']),
-            ('femo', ['curl', 'peso muerto']), 
-            # GLÚTEOS
-            ('gluteo', ['hip thrust', 'patada', 'abducci', 'puente']),
-            # HOMBROS
-            ('hombro', ['militar', 'lateral', 'frontal', 'pajaro', 'pájaro', 'face pull']),
-            # BRAZOS (BÍCEPS Y TRÍCEPS)
-            ('biceps', ['curl', 'martillo', 'scott', 'predicador']),
-            ('triceps', ['frances', 'francés', 'extension', 'extensión', 'patada', 'cerrado']),
-            # CORE Y GEMELOS
-            ('abdomin', ['crunch', 'plancha', 'rueda', 'elevacion', 'elevación']),
-            ('gemelo', ['talon', 'gemelo'])
-        ]
-        
-        popular_exercises = []
-        seen_ids = set()
-        
-        for muscle_fragment, keywords in robust_search_map:
-            for kw in keywords:
-                # Buscamos de forma muy permisiva: que el grupo contenga el fragmento y el nombre la palabra
-                matches = Exercise.objects.filter(
-                    muscle_group__icontains=muscle_fragment,
-                    name__icontains=kw,
-                    is_global=True
-                )[:3] # Hasta 3 por palabra clave
-                
-                for ex in matches:
-                    if ex.id not in seen_ids:
-                        popular_exercises.append(ex)
-                        seen_ids.add(ex.id)
-                        
-        # Búsqueda de rescate universal para los reyes del gimnasio (por si fallan los grupos musculares)
-        kings = ['press de banca', 'sentadilla', 'peso muerto', 'dominada']
-        for king in kings:
-            matches = Exercise.objects.filter(name__icontains=king, is_global=True)[:2]
-            for ex in matches:
-                if ex.id not in seen_ids:
-                    popular_exercises.append(ex)
-                    seen_ids.add(ex.id)
-        
-        # Si la lista es menor a 40, rellenamos con globales para que nunca esté vacía
-        if len(popular_exercises) < 40:
-            additional = Exercise.objects.filter(is_global=True).exclude(id__in=seen_ids)[:(40 - len(popular_exercises))]
-            popular_exercises.extend(additional)
+        user = request.user
+        limit = min(int(request.query_params.get('limit', 10)), 30)
 
-        serializer = self.get_serializer(popular_exercises[:100], many=True)
+        usage_qs = (
+            Exercise.objects.filter(
+                Q(user__isnull=True) | Q(user=user),
+                sets__workout_session__user=user,
+            )
+            .annotate(usage_count=Count('sets', distinct=True))
+            .filter(usage_count__gt=0)
+            .order_by('-usage_count', 'name')[:limit]
+        )
+
+        if usage_qs.exists():
+            serializer = self.get_serializer(usage_qs, many=True)
+            return Response(serializer.data)
+
+        fallback = self.get_queryset().order_by('name')[:limit]
+        serializer = self.get_serializer(fallback, many=True)
         return Response(serializer.data)

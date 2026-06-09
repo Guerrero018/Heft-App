@@ -438,6 +438,45 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
         error.type == DioExceptionType.sendTimeout;
   }
 
+  bool _isRetryableError(Object error) {
+    if (_isNetworkError(error)) return true;
+    if (error is DioException) {
+      final code = error.response?.statusCode;
+      return code != null && code >= 500;
+    }
+    return false;
+  }
+
+  Future<void> _postWorkoutWithRetry(
+    Map<String, dynamic> payload, {
+    int maxAttempts = 3,
+  }) async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await _api.post('workouts/', data: payload);
+        return;
+      } catch (e) {
+        lastError = e;
+        if (!_isRetryableError(e) || attempt == maxAttempts) {
+          throw e;
+        }
+        await Future.delayed(Duration(milliseconds: 350 * attempt));
+      }
+    }
+    if (lastError != null) throw lastError;
+  }
+
+  void _syncAfterWorkoutSaved(Set<String> unlockedBaseline) {
+    ref.read(workoutHistoryProvider.notifier).fetchWorkouts();
+    ref.invalidate(statisticsProvider);
+    unawaited(
+      ref.read(achievementsProvider.notifier).sync(
+            unlockedBaseline: unlockedBaseline,
+          ),
+    );
+  }
+
   Future<FinishWorkoutResult> finishWorkout() async {
     if (!state.isActive) return FinishWorkoutResult.failed;
 
@@ -465,23 +504,17 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
 
     if (isOnline) {
       try {
-        await _api.post('workouts/', data: payload);
-
-        ref.read(workoutHistoryProvider.notifier).fetchWorkouts();
-        ref.invalidate(statisticsProvider);
-        await ref.read(achievementsProvider.notifier).sync(
-              unlockedBaseline: unlockedBaseline,
-            );
-
+        await _postWorkoutWithRetry(payload);
+        _syncAfterWorkoutSaved(unlockedBaseline);
         await _clearDraft();
         state = LiveWorkoutState();
         return FinishWorkoutResult.success;
       } catch (e) {
         print('Error finishing workout online: $e');
-        if (!_isNetworkError(e)) {
+        if (!_isRetryableError(e)) {
           state = savedState.copyWith(isActive: true, isLoading: false);
           _startWorkoutTimer();
-          return FinishWorkoutResult.failed;
+          return FinishWorkoutResult.failedRetryable;
         }
       }
     }
@@ -495,7 +528,7 @@ class LiveWorkoutNotifier extends Notifier<LiveWorkoutState> {
       print('Error saving workout offline: $e');
       state = savedState.copyWith(isActive: true, isLoading: false);
       _startWorkoutTimer();
-      return FinishWorkoutResult.failed;
+      return FinishWorkoutResult.failedRetryable;
     }
   }
 

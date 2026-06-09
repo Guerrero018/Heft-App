@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/label_translations.dart';
 import '../data/exercise_provider.dart';
+import '../domain/exercise_model.dart';
 import 'exercise_detail_screen.dart';
 import 'create_exercise_screen.dart';
 
@@ -19,6 +22,8 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
   String _selectedMuscle = 'all';
   String _selectedEquipment = 'all';
   bool _onlyPopular = false;
+  final ScrollController _scrollController = ScrollController();
+  Timer? _searchDebounce;
 
   final List<Map<String, String>> _muscleGroups = [
     {'id': 'all', 'name': 'Todos'},
@@ -47,28 +52,66 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     Future.microtask(() {
-      ref.read(exerciseProvider.notifier).fetchExercises();
+      _applyServerFilters();
       ref.read(exerciseProvider.notifier).fetchPopularExercises();
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(exerciseProvider);
-    
-    final baseList = _onlyPopular ? state.popularExercises : state.exercises;
-    
-    final filtered = baseList.where((e) {
-      // Filtros
-      final matchesSearch = e.name.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesMuscle = _selectedMuscle == 'all' || e.muscleGroup == _selectedMuscle;
-      final matchesEq = _selectedEquipment == 'all' || e.exerciseType == _selectedEquipment;
-      
+  void dispose() {
+    _searchDebounce?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_onlyPopular || !_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 240) {
+      ref.read(exerciseProvider.notifier).loadMore();
+    }
+  }
+
+  void _applyServerFilters() {
+    ref.read(exerciseProvider.notifier).fetchExercises(
+          query: ExerciseQuery(
+            search: _searchQuery,
+            muscleGroup: _selectedMuscle,
+            exerciseType: _selectedEquipment,
+          ),
+        );
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() => _searchQuery = value);
+    _searchDebounce?.cancel();
+    if (_onlyPopular) return;
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _applyServerFilters();
+    });
+  }
+
+  List<Exercise> _filteredPopular(List<Exercise> popular) {
+    return popular.where((e) {
+      final matchesSearch =
+          e.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesMuscle =
+          _selectedMuscle == 'all' || e.muscleGroup == _selectedMuscle;
+      final matchesEq =
+          _selectedEquipment == 'all' || e.exerciseType == _selectedEquipment;
       return matchesSearch && matchesMuscle && matchesEq;
     }).toList();
+  }
 
-    // print("Populares: ${state.popularExercises.length}, Search: '${_searchQuery}', Muscle: '${_selectedMuscle}'");
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(exerciseProvider);
+
+    final displayList = _onlyPopular
+        ? _filteredPopular(state.popularExercises)
+        : state.exercises;
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceColor,
@@ -97,7 +140,7 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    onChanged: (val) => setState(() => _searchQuery = val),
+                    onChanged: _onSearchChanged,
                     decoration: InputDecoration(
                       hintText: 'Buscar ejercicio...',
                       prefixIcon: const Icon(Icons.search, color: AppTheme.primaryColor),
@@ -154,7 +197,10 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                   child: FilterChip(
                     selected: isSelected,
                     label: Text(m['name']!),
-                    onSelected: (val) => setState(() => _selectedMuscle = m['id']!),
+                    onSelected: (val) {
+                      setState(() => _selectedMuscle = m['id']!);
+                      if (!_onlyPopular) _applyServerFilters();
+                    },
                     backgroundColor: AppTheme.cardColor,
                     selectedColor: AppTheme.primaryColor,
                     labelStyle: TextStyle(color: isSelected ? Colors.black : Colors.white),
@@ -179,7 +225,10 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                   padding: const EdgeInsets.only(right: 8),
                   child: ActionChip(
                     label: Text(eq['name']!),
-                    onPressed: () => setState(() => _selectedEquipment = eq['id']!),
+                    onPressed: () {
+                      setState(() => _selectedEquipment = eq['id']!);
+                      if (!_onlyPopular) _applyServerFilters();
+                    },
                     backgroundColor: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.2) : AppTheme.cardColor.withValues(alpha: 0.5),
                     side: BorderSide.none,
                     labelStyle: TextStyle(
@@ -199,6 +248,7 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
           // Sección SCROLLABLE
           Expanded(
             child: CustomScrollView(
+              controller: _scrollController,
               slivers: [
                 // Carrusel de populares (Solo se muestra si cumple las condiciones)
                 if (state.popularExercises.isNotEmpty && _searchQuery.isEmpty && !_onlyPopular && _selectedMuscle == 'all' && _selectedEquipment == 'all')
@@ -322,11 +372,20 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                   const SliverFillRemaining(
                     child: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
                   )
+                else if (displayList.isEmpty)
+                  const SliverFillRemaining(
+                    child: Center(
+                      child: Text(
+                        'No hay ejercicios con estos filtros',
+                        style: TextStyle(color: AppTheme.hintColor),
+                      ),
+                    ),
+                  )
                 else
                   SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        final e = filtered[index];
+                        final e = displayList[index];
                         return Column(
                           children: [
                             ListTile(
@@ -411,7 +470,16 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                           ],
                         );
                       },
-                      childCount: filtered.length,
+                      childCount: displayList.length,
+                    ),
+                  ),
+                if (!_onlyPopular && state.isLoadingMore)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(
+                        child: CircularProgressIndicator(color: AppTheme.primaryColor),
+                      ),
                     ),
                   ),
               ],

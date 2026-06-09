@@ -241,5 +241,7 @@ enum FinishWorkoutResult {
   success,
   savedOffline,
   noCompletedSets,
+  /// La sesión sigue activa; el usuario puede reintentar.
+  failedRetryable,
   failed,
 }

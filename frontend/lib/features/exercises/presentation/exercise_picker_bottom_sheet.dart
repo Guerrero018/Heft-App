@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,6 +32,8 @@ class _ExercisePickerBottomSheetState
   String _selectedMuscle = 'all';
   String _selectedEquipment = 'all';
   bool _onlyPopular = false;
+  Timer? _searchDebounce;
+  ScrollController? _listScrollController;
 
   final List<Map<String, String>> _muscleGroups = [
     {'id': 'all', 'name': 'Todos'},
@@ -61,18 +65,54 @@ class _ExercisePickerBottomSheetState
   void initState() {
     super.initState();
     Future.microtask(() {
-      ref.read(exerciseProvider.notifier).fetchExercises();
+      _applyServerFilters();
       ref.read(exerciseProvider.notifier).fetchPopularExercises();
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(exerciseProvider);
+  void dispose() {
+    _searchDebounce?.cancel();
+    _listScrollController?.removeListener(_onScroll);
+    super.dispose();
+  }
 
-    final baseList = _onlyPopular ? state.popularExercises : state.exercises;
+  void _bindScrollController(ScrollController controller) {
+    if (_listScrollController == controller) return;
+    _listScrollController?.removeListener(_onScroll);
+    _listScrollController = controller;
+    _listScrollController?.addListener(_onScroll);
+  }
 
-    final filtered = baseList.where((e) {
+  void _onScroll() {
+    if (_onlyPopular || _listScrollController == null) return;
+    final position = _listScrollController!.position;
+    if (position.pixels >= position.maxScrollExtent - 240) {
+      ref.read(exerciseProvider.notifier).loadMore();
+    }
+  }
+
+  void _applyServerFilters() {
+    ref.read(exerciseProvider.notifier).fetchExercises(
+          query: ExerciseQuery(
+            search: _searchQuery,
+            muscleGroup: _selectedMuscle,
+            exerciseType: _selectedEquipment,
+          ),
+        );
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() => _searchQuery = value);
+    _searchDebounce?.cancel();
+    if (_onlyPopular) return;
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _applyServerFilters();
+    });
+  }
+
+  List<Exercise> _filteredPopular(List<Exercise> popular) {
+    return popular.where((e) {
       if (!_isSelectable(e)) return false;
       final matchesSearch =
           e.name.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -82,6 +122,15 @@ class _ExercisePickerBottomSheetState
           _selectedEquipment == 'all' || e.exerciseType == _selectedEquipment;
       return matchesSearch && matchesMuscle && matchesEq;
     }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(exerciseProvider);
+
+    final displayList = _onlyPopular
+        ? _filteredPopular(state.popularExercises)
+        : state.exercises.where(_isSelectable).toList();
 
     final visiblePopular =
         state.popularExercises.where(_isSelectable).toList();
@@ -92,6 +141,7 @@ class _ExercisePickerBottomSheetState
       minChildSize: 0.5,
       expand: false,
       builder: (context, scrollController) {
+        _bindScrollController(scrollController);
         return Container(
           decoration: const BoxDecoration(
             color: AppTheme.surfaceColor,
@@ -148,7 +198,7 @@ class _ExercisePickerBottomSheetState
                   children: [
                     Expanded(
                       child: TextField(
-                        onChanged: (val) => setState(() => _searchQuery = val),
+                        onChanged: _onSearchChanged,
                         decoration: InputDecoration(
                           hintText: 'Buscar ejercicio...',
                           prefixIcon: const Icon(
@@ -206,8 +256,10 @@ class _ExercisePickerBottomSheetState
                       child: FilterChip(
                         selected: isSelected,
                         label: Text(m['name']!),
-                        onSelected: (val) =>
-                            setState(() => _selectedMuscle = m['id']!),
+                        onSelected: (val) {
+                          setState(() => _selectedMuscle = m['id']!);
+                          if (!_onlyPopular) _applyServerFilters();
+                        },
                         backgroundColor: AppTheme.cardColor,
                         selectedColor: AppTheme.primaryColor,
                         labelStyle: TextStyle(
@@ -235,8 +287,10 @@ class _ExercisePickerBottomSheetState
                       padding: const EdgeInsets.only(right: 8),
                       child: ActionChip(
                         label: Text(eq['name']!),
-                        onPressed: () =>
-                            setState(() => _selectedEquipment = eq['id']!),
+                        onPressed: () {
+                          setState(() => _selectedEquipment = eq['id']!);
+                          if (!_onlyPopular) _applyServerFilters();
+                        },
                         backgroundColor: isSelected
                             ? AppTheme.primaryColor.withValues(alpha: 0.2)
                             : AppTheme.cardColor.withValues(alpha: 0.5),
@@ -410,7 +464,7 @@ class _ExercisePickerBottomSheetState
                       const SliverFillRemaining(
                         child: Center(child: CircularProgressIndicator()),
                       )
-                    else if (filtered.isEmpty)
+                    else if (displayList.isEmpty)
                       const SliverFillRemaining(
                         child: Center(
                           child: Text(
@@ -423,7 +477,7 @@ class _ExercisePickerBottomSheetState
                       SliverList(
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
-                            final e = filtered[index];
+                            final e = displayList[index];
                             return Column(
                               children: [
                                 ListTile(
@@ -562,7 +616,14 @@ class _ExercisePickerBottomSheetState
                               ],
                             );
                           },
-                          childCount: filtered.length,
+                          childCount: displayList.length,
+                        ),
+                      ),
+                    if (!_onlyPopular && state.isLoadingMore)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(child: CircularProgressIndicator()),
                         ),
                       ),
                   ],

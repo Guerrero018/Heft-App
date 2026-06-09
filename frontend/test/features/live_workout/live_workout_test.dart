@@ -148,6 +148,90 @@ void main() {
     expect(container.read(liveWorkoutProvider).activeExercises[0].sets[0].isCompleted, true);
   });
 
+  test('finishWorkout retries transient server errors', () async {
+    final notifier = container.read(liveWorkoutProvider.notifier);
+    await notifier.startWorkout(null);
+
+    final exercise = RoutineExercise(
+      id: 1,
+      exerciseId: 101,
+      exerciseName: 'Curl',
+      muscleGroup: 'Biceps',
+      order: 1,
+      targetSets: 1,
+      targetReps: 10,
+      targetWeight: 15,
+    );
+    notifier.addExercise(exercise);
+
+    final setId =
+        container.read(liveWorkoutProvider).activeExercises[0].sets[0].id;
+    notifier.updateSet(0, setId, reps: 10, weight: 15);
+
+    var postAttempts = 0;
+    when(() => mockDio.post(any(), data: any(named: 'data'))).thenAnswer((_) async {
+      postAttempts++;
+      if (postAttempts < 3) {
+        throw DioException(
+          requestOptions: RequestOptions(path: 'workouts/'),
+          response: Response(
+            requestOptions: RequestOptions(path: 'workouts/'),
+            statusCode: 503,
+          ),
+          type: DioExceptionType.badResponse,
+        );
+      }
+      return Response(
+        data: {'id': 1},
+        statusCode: 201,
+        requestOptions: RequestOptions(path: 'workouts/'),
+      );
+    });
+
+    final result = await notifier.finishWorkout();
+
+    expect(result, FinishWorkoutResult.success);
+    expect(postAttempts, greaterThanOrEqualTo(3));
+    expect(container.read(liveWorkoutProvider).isActive, false);
+  });
+
+  test('finishWorkout keeps session on non-retryable error', () async {
+    final notifier = container.read(liveWorkoutProvider.notifier);
+    await notifier.startWorkout(null);
+
+    final exercise = RoutineExercise(
+      id: 1,
+      exerciseId: 101,
+      exerciseName: 'Curl',
+      muscleGroup: 'Biceps',
+      order: 1,
+      targetSets: 1,
+      targetReps: 10,
+      targetWeight: 15,
+    );
+    notifier.addExercise(exercise);
+
+    final setId =
+        container.read(liveWorkoutProvider).activeExercises[0].sets[0].id;
+    notifier.updateSet(0, setId, reps: 10, weight: 15);
+
+    when(() => mockDio.post(any(), data: any(named: 'data'))).thenThrow(
+      DioException(
+        requestOptions: RequestOptions(path: 'workouts/'),
+        response: Response(
+          requestOptions: RequestOptions(path: 'workouts/'),
+          statusCode: 400,
+        ),
+        type: DioExceptionType.badResponse,
+      ),
+    );
+
+    final result = await notifier.finishWorkout();
+
+    expect(result, FinishWorkoutResult.failedRetryable);
+    expect(container.read(liveWorkoutProvider).isActive, true);
+  });
+
   test('Finish workout sends only completed sets', () async {
     final notifier = container.read(liveWorkoutProvider.notifier);
     await notifier.startWorkout(null);
